@@ -1,0 +1,27 @@
+assets/external/
+.web
+.states
+*.py[cod]
+# Entornos virtuales
+venv/
+env/
+.venv/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Variables de entorno y secretos (¡MUY IMPORTANTE!)
+.env
+.env.local
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Bases de datos locales (SQLite)
+*.sqlite3
+*.db
+data/

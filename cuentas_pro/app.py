@@ -1,0 +1,46 @@
+"""Entrypoint de Reflex — registra la app y todas sus rutas."""
+import reflex as rx
+from cuentas_pro import theme as T
+from cuentas_pro import db as _db  # noqa: F401  (crea tablas SQLite al importar)
+from cuentas_pro.pages import (
+    home_page, resumen_page, ingresos_page,
+    gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
+)
+from cuentas_pro.state.resumen import ResumenState
+from cuentas_pro.state.ingresos import IngresosState
+from cuentas_pro.state.gastos import GastosState
+from cuentas_pro.state.compras import ComprasState
+from cuentas_pro.state.cajas import CajasState
+from cuentas_pro.state.inversiones import InversionesState
+from cuentas_pro.state.baul import BaulState
+
+
+app = rx.App(
+    theme=rx.theme(
+        appearance="dark",
+        accent_color="violet",
+        radius="large",
+        scaling="100%",
+    ),
+    style=T.GLOBAL_CSS,
+    stylesheets=[
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
+    ],
+)
+
+app.add_page(home_page,        route="/",            title="Cuentas PRO",
+             on_load=ResumenState.load)
+app.add_page(resumen_page,     route="/resumen",     title="Resumen · Cuentas PRO",
+             on_load=ResumenState.load)
+app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · Cuentas PRO",
+             on_load=IngresosState.load)
+app.add_page(gastos_page,      route="/gastos",      title="Gastos · Cuentas PRO",
+             on_load=GastosState.load)
+app.add_page(compras_page,     route="/compras",     title="Listas de compra · Cuentas PRO",
+             on_load=ComprasState.load)
+app.add_page(cajas_page,       route="/cajas",       title="Cajas · Cuentas PRO",
+             on_load=CajasState.load)
+app.add_page(inversiones_page, route="/inversiones", title="Inversiones · Cuentas PRO",
+             on_load=InversionesState.load)
+app.add_page(baul_page,        route="/baul",        title="Baúl · Cuentas PRO",
+             on_load=BaulState.load)

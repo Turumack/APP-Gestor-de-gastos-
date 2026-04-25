@@ -1,0 +1,4 @@
+reflex>=0.9.0
+sqlmodel>=0.0.16
+pandas>=2.0.0
+requests>=2.31.0
