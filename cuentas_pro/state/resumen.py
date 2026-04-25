@@ -36,10 +36,13 @@ class ResumenState(rx.State):
                 .order_by(sqlmodel.desc(Gasto.fecha))
             ).all()
 
-        # Ingresos
+        # Ingresos (usar el mayor entre el ingreso real declarado y el neto calculado;
+        # `ingreso_real_cuenta` puede ser None, por eso se normaliza a 0.0)
         total_ing = sum(
-            max(i.ingreso_real_cuenta,
-                calculate_net_income(i.salario_base, i.aux_transporte, i.otros))
+            max(
+                i.ingreso_real_cuenta or 0.0,
+                calculate_net_income(i.salario_base, i.aux_transporte, i.otros),
+            )
             for i in ings
         ) if ings else 0.0
 

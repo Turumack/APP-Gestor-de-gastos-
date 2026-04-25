@@ -380,8 +380,15 @@ class GastosState(rx.State):
 
         # Calcular monto COP final según moneda
         if self.form_moneda == "USD":
-            if self.form_monto_original <= 0 or self.form_trm <= 0:
-                self.form_msg = "⚠ USD requiere monto y TRM > 0."
+            if self.form_monto_original <= 0:
+                self.form_msg = "⚠ El monto en USD debe ser mayor a 0."
+                return
+            if self.form_trm <= 0:
+                # Permite ingresar TRM manual cuando la API no respondió.
+                self.form_msg = (
+                    "⚠ TRM no disponible. Ingresa la TRM manualmente "
+                    "(campo TRM) y vuelve a guardar."
+                )
                 return
             monto_cop = self.form_monto_original * self.form_trm
             monto_original = self.form_monto_original

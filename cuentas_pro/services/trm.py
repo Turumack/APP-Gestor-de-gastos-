@@ -16,6 +16,7 @@ import requests
 _API = "https://www.datos.gov.co/resource/32sa-8pi3.json"
 _CACHE: dict[str, tuple[float, float]] = {}  # iso_date -> (trm, timestamp)
 _TTL_SEG = 60 * 60  # 1 hora
+_ULTIMA_TRM_OK: float = 0.0  # último valor obtenido con éxito (fallback offline)
 
 
 def _hoy_iso() -> str:
@@ -28,6 +29,7 @@ def obtener_trm(fecha: Optional[str] = None, timeout: float = 6.0) -> float:
     - Si falla la petición, retorna 0.0 (el caller decide fallback).
     - Cachea 1h en memoria por fecha.
     """
+    global _ULTIMA_TRM_OK
     fecha = fecha or _hoy_iso()
     now = time.time()
     cached = _CACHE.get(fecha)
@@ -53,9 +55,11 @@ def obtener_trm(fecha: Optional[str] = None, timeout: float = 6.0) -> float:
             r2.raise_for_status()
             data = r2.json()
         if not data:
-            return 0.0
+            return _ULTIMA_TRM_OK
         trm = float(data[0]["valor"])
         _CACHE[fecha] = (trm, now)
+        _ULTIMA_TRM_OK = trm
         return trm
     except Exception:
-        return 0.0
+        # Fallback: último valor conocido (puede ser 0.0 si nunca se obtuvo).
+        return _ULTIMA_TRM_OK
