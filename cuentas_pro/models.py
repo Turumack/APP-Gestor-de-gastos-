@@ -105,5 +105,19 @@ class ShoppingItem(rx.Model, table=True):
     comprado: bool = False
     activo: bool = True
     notas: str = ""
+    imagen_url: str = ""   # miniatura (OpenGraph image)
+    link: str = ""         # URL del producto (Amazon, MercadoLibre, etc.)
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+
+
+class Presupuesto(rx.Model, table=True):
+    """Presupuesto mensual por categoría de gasto."""
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    categoria: str = "Otros"
+    anio: int = 0
+    mes: int = 0  # 1..12
+    monto: float = 0.0
+    alerta_pct: int = 90  # alerta cuando se alcance este % del cupo
+    notas: str = ""
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 

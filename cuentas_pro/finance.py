@@ -67,13 +67,19 @@ def calculate_net_income(salario_base: float, aux_transporte: float, otros: floa
 # ── Categorías de gasto y colores ──────────────────────
 CATEGORIAS_GASTO: list[str] = [
     "Alimentación",
+    "Mercado",
     "Transporte",
     "Vivienda",
     "Servicios",
     "Entretenimiento",
+    "Salidas",
     "Salud",
     "Educación",
     "Ropa",
+    "Tecnología",
+    "Muebles",
+    "Mascotas",
+    "Compra casual",
     "Suscripciones",
     "Deuda",
     "Otros",
@@ -81,13 +87,19 @@ CATEGORIAS_GASTO: list[str] = [
 
 COLOR_CATEGORIA: dict[str, str] = {
     "Alimentación":    "#f472b6",
+    "Mercado":         "#84cc16",
     "Transporte":      "#60a5fa",
     "Vivienda":        "#a78bfa",
     "Servicios":       "#34d399",
     "Entretenimiento": "#fbbf24",
+    "Salidas":         "#ff6b9d",
     "Salud":           "#f87171",
     "Educación":       "#38bdf8",
     "Ropa":            "#fb7185",
+    "Tecnología":      "#06b6d4",
+    "Muebles":         "#b08968",
+    "Mascotas":        "#f97316",
+    "Compra casual":   "#8b5cf6",
     "Suscripciones":   "#c084fc",
     "Deuda":           "#ef4444",
     "Otros":           "#94a3b8",
@@ -112,7 +124,10 @@ TIPO_CAJA_LABEL: dict[str, str] = {
     "otro":             "Otro",
 }
 
-MONEDAS: list[str] = ["COP", "USD"]
+MONEDAS: list[str] = ["COP", "USD", "EUR"]
+
+# Tipos válidos para validaciones server-side de cajas.
+TIPOS_CAJA_VALIDOS: frozenset[str] = frozenset(TIPOS_CAJA)
 
 # 4x1000: aplica en transferencias salientes desde cuenta bancaria NO exenta.
 # Tarjetas de crédito, efectivo y cajas exentas no lo generan.
@@ -120,7 +135,12 @@ TASA_4X1000 = 0.004
 
 
 def calcular_4x1000(monto: float, caja_origen_tipo: str, caja_origen_exenta: bool) -> float:
-    """Devuelve el costo del GMF (4x1000) para un egreso desde la caja origen."""
+    """Devuelve el costo del GMF (4x1000) para un egreso desde la caja origen.
+
+    Lanza ``ValueError`` si ``caja_origen_tipo`` no está en la whitelist.
+    """
+    if caja_origen_tipo not in TIPOS_CAJA_VALIDOS:
+        raise ValueError(f"Tipo de caja no válido: {caja_origen_tipo!r}")
     if caja_origen_exenta:
         return 0.0
     if caja_origen_tipo in ("efectivo", "tarjeta_credito"):

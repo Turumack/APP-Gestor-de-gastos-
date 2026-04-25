@@ -3,7 +3,7 @@ from datetime import date
 import reflex as rx
 import sqlmodel
 
-from cuentas_pro.models import Ingreso, Gasto
+from cuentas_pro.models import Ingreso, Gasto, Presupuesto
 from cuentas_pro.finance import calculate_net_income, COLOR_CATEGORIA
 from cuentas_pro.state.periodo import PeriodoState
 
@@ -20,6 +20,9 @@ class ResumenState(rx.State):
 
     # Transacciones recientes
     recientes: list[dict] = []  # [{tipo, desc, monto, fecha, color}]
+
+    # Alertas de presupuesto del periodo
+    alertas_presupuesto: list[dict] = []  # [{categoria, pct, estado, color, gastado_fmt, monto_fmt}]
 
     @rx.event
     async def load(self):
@@ -90,3 +93,30 @@ class ResumenState(rx.State):
             }
             for g in gts[:8]
         ]
+
+        # Alertas de presupuesto: categorías con uso ≥ alerta_pct
+        with rx.session() as s:
+            presupuestos = s.exec(
+                sqlmodel.select(Presupuesto).where(
+                    Presupuesto.anio == per.anio,
+                    Presupuesto.mes == per.mes,
+                )
+            ).all()
+        alertas: list[dict] = []
+        for p in presupuestos:
+            gastado = por_cat.get(p.categoria, 0.0)
+            pct = (gastado / p.monto * 100) if p.monto > 0 else 0.0
+            if pct < p.alerta_pct:
+                continue
+            estado = "excedido" if pct >= 100 else "alerta"
+            alertas.append({
+                "categoria": p.categoria,
+                "pct": pct,
+                "pct_fmt": f"{pct:.0f}%",
+                "estado": estado,
+                "gastado_fmt": f"${gastado:,.0f}",
+                "monto_fmt": f"${p.monto:,.0f}",
+                "color": COLOR_CATEGORIA.get(p.categoria, "#94a3b8"),
+            })
+        alertas.sort(key=lambda a: -a["pct"])
+        self.alertas_presupuesto = alertas

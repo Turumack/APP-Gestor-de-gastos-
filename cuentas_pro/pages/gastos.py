@@ -126,21 +126,24 @@ def _form() -> rx.Component:
                     columns="2", spacing="3", width="100%",
                 ),
 
-                # Moneda + monto (muestra bloque USD si aplica)
+                # Moneda + monto (muestra bloque de tasa si la moneda no es COP)
                 rx.grid(
                     select_field("Moneda", GastosState.form_moneda,
                                  GastosState.set_form_moneda, MONEDAS),
                     rx.cond(
-                        GastosState.form_moneda == "USD",
-                        number_field("Monto (USD)", GastosState.form_monto_original,
-                                     GastosState.set_form_monto_original, step=1),
+                        GastosState.form_moneda != "COP",
+                        number_field(
+                            "Monto (" + GastosState.form_moneda + ")",
+                            GastosState.form_monto_original,
+                            GastosState.set_form_monto_original, step=1,
+                        ),
                         number_field("Monto (COP)", GastosState.form_monto,
                                      GastosState.set_form_monto, step=1000),
                     ),
                     rx.cond(
-                        GastosState.form_moneda == "USD",
+                        GastosState.form_moneda != "COP",
                         rx.vstack(
-                            field_label("TRM (USD→COP)"),
+                            field_label("Tasa " + GastosState.form_moneda + "→COP"),
                             rx.hstack(
                                 rx.input(
                                     value=GastosState.form_trm.to_string(),
@@ -160,7 +163,7 @@ def _form() -> rx.Component:
                                     height="40px", padding="0 12px",
                                     cursor="pointer", border="none",
                                     border_radius=T.RADIUS_SM,
-                                    title="Obtener TRM oficial",
+                                    title="Obtener tasa oficial",
                                 ),
                                 spacing="2", width="100%",
                             ),
@@ -172,7 +175,7 @@ def _form() -> rx.Component:
                 ),
 
                 rx.cond(
-                    (GastosState.form_moneda == "USD") & (GastosState.form_monto > 0),
+                    (GastosState.form_moneda != "COP") & (GastosState.form_monto > 0),
                     rx.text(
                         "Equivalente: $" + GastosState.form_monto.to_string(),
                         size="2", color=T.TEXT_MUTED,
@@ -444,12 +447,15 @@ def gastos_page() -> rx.Component:
         rx.hstack(
             page_title("Gastos", "Tus egresos del período con calendario visual."),
             rx.spacer(),
+            ghost_button("Generar recurrentes", GastosState.generar_recurrentes, icon="repeat"),
+            ghost_button("Exportar CSV", GastosState.exportar_csv, icon="download"),
             primary_button(
                 rx.cond(GastosState.form_open, "Cerrar", "Nuevo gasto"),
                 GastosState.toggle_form,
                 icon=rx.cond(GastosState.form_open, "x", "plus"),
             ),
             width="100%", align="start",
+            spacing="3",
         ),
 
         rx.hstack(
@@ -494,8 +500,35 @@ def gastos_page() -> rx.Component:
                 size="5", font_family=T.FONT_HEAD,
             ),
             rx.spacer(),
+            rx.hstack(
+                rx.icon("search", size=14, color=T.TEXT_DIM),
+                rx.input(
+                    value=GastosState.busqueda,
+                    on_change=GastosState.set_busqueda,
+                    placeholder="Buscar descripción, categoría, notas…",
+                    background="rgba(255,255,255,0.04)",
+                    border=f"1px solid {T.BORDER}",
+                    border_radius=T.RADIUS_SM,
+                    color=T.TEXT,
+                    padding="8px 12px",
+                    height="36px",
+                    width="280px",
+                ),
+                rx.cond(
+                    GastosState.busqueda != "",
+                    rx.button(
+                        rx.icon("x", size=14),
+                        on_click=GastosState.limpiar_busqueda,
+                        variant="ghost", size="1",
+                        cursor="pointer", color=T.TEXT_MUTED,
+                    ),
+                    rx.fragment(),
+                ),
+                spacing="2", align="center",
+            ),
             width="100%",
             padding_bottom="16px",
+            align="center",
         ),
 
         rx.cond(

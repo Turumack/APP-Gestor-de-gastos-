@@ -5,6 +5,7 @@ from cuentas_pro import db as _db  # noqa: F401  (crea tablas SQLite al importar
 from cuentas_pro.pages import (
     home_page, resumen_page, ingresos_page,
     gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
+    presupuestos_page, configuracion_page,
 )
 from cuentas_pro.state.resumen import ResumenState
 from cuentas_pro.state.ingresos import IngresosState
@@ -13,6 +14,8 @@ from cuentas_pro.state.compras import ComprasState
 from cuentas_pro.state.cajas import CajasState
 from cuentas_pro.state.inversiones import InversionesState
 from cuentas_pro.state.baul import BaulState
+from cuentas_pro.state.presupuestos import PresupuestosState
+from cuentas_pro.state.config import ConfigState
 
 
 app = rx.App(
@@ -44,3 +47,7 @@ app.add_page(inversiones_page, route="/inversiones", title="Inversiones · Cuent
              on_load=InversionesState.load)
 app.add_page(baul_page,        route="/baul",        title="Baúl · Cuentas PRO",
              on_load=BaulState.load)
+app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · Cuentas PRO",
+             on_load=PresupuestosState.load)
+app.add_page(configuracion_page, route="/configuracion", title="Configuración · Cuentas PRO",
+             on_load=ConfigState.load)

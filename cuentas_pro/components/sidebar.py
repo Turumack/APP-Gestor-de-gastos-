@@ -83,8 +83,13 @@ def sidebar() -> rx.Component:
             rx.spacer(height="20px"),
             rx.text("PATRIMONIO", size="1", color=T.TEXT_DIM, weight="bold", letter_spacing="0.1em", padding_left="14px"),
             _nav_item("Cajas", "wallet", "/cajas", route),
+            _nav_item("Presupuestos", "piggy-bank", "/presupuestos", route),
             _nav_item("Inversiones", "landmark", "/inversiones", route),
             _nav_item("Baúl", "archive", "/baul", route),
+
+            rx.spacer(height="20px"),
+            rx.text("SISTEMA", size="1", color=T.TEXT_DIM, weight="bold", letter_spacing="0.1em", padding_left="14px"),
+            _nav_item("Configuración", "settings", "/configuracion", route),
 
             rx.spacer(),
 

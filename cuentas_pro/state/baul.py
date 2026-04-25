@@ -35,7 +35,7 @@ class BaulState(rx.State):
     form_editing_id: Optional[int] = None
     form_msg: str = ""
 
-    @rx.var
+    @rx.var(cache=True)
     def rows_filtradas(self) -> list[DocRow]:
         data = self.rows
         if self.filtro_cat != "Todas":
@@ -77,6 +77,13 @@ class BaulState(rx.State):
     async def guardar(self):
         if not self.form_titulo.strip():
             self.form_msg = "⚠ El título es obligatorio."
+            return
+        # Límite de tamaño para evitar bloat de BD (≈1 MB de texto).
+        MAX_LEN = 1_000_000
+        if len(self.form_contenido) > MAX_LEN:
+            self.form_msg = (
+                f"⚠ El contenido excede el límite de {MAX_LEN:,} caracteres."
+            )
             return
         with rx.session() as s:
             if self.form_editing_id:

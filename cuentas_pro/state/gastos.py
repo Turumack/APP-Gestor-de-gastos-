@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from cuentas_pro.models import Gasto, Caja, ShoppingGroup, ShoppingItem
 from cuentas_pro.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA, MEDIOS_PAGO, MONEDAS
-from cuentas_pro.services import obtener_trm
+from cuentas_pro.services import obtener_trm, obtener_tasa_a_cop
 from cuentas_pro.state.periodo import PeriodoState
 from cuentas_pro.state._autosetters import auto_setters
 
@@ -51,6 +51,7 @@ class GastosState(rx.State):
     # Calendario
     celdas: list[DiaCelda] = []
     dia_seleccionado: str = ""  # fecha ISO seleccionada (filtro)
+    busqueda: str = ""          # filtro de texto libre
 
     # Form
     form_open: bool = False
@@ -70,6 +71,8 @@ class GastosState(rx.State):
     form_notas: str = ""
     form_editing_id: Optional[int] = None
     form_msg: str = ""
+    # Confirmación cuando se detecta un posible duplicado.
+    form_confirmar_duplicado: bool = False
 
     # Cajas disponibles (cache ligero para el selector)
     cajas_opts: list[dict] = []
@@ -77,11 +80,26 @@ class GastosState(rx.State):
     shopping_items_all: list[dict] = []
     shopping_items_opts: list[dict] = []
 
-    @rx.var
+    @rx.var(cache=True)
     def rows_filtradas(self) -> list[GastoRow]:
-        if self.dia_seleccionado == "":
-            return self.rows
-        return [r for r in self.rows if r.fecha == self.dia_seleccionado]
+        data = self.rows
+        if self.dia_seleccionado != "":
+            data = [r for r in data if r.fecha == self.dia_seleccionado]
+        if self.busqueda.strip():
+            q = self.busqueda.strip().lower()
+            data = [
+                r for r in data
+                if q in r.descripcion.lower()
+                or q in r.categoria.lower()
+                or q in (r.notas or "").lower()
+                or q in (r.medio_pago or "").lower()
+                or q in (r.caja_nombre or "").lower()
+            ]
+        return data
+
+    @rx.event
+    def limpiar_busqueda(self):
+        self.busqueda = ""
 
     @rx.event
     async def load(self):
@@ -143,8 +161,8 @@ class GastosState(rx.State):
         for r in results:
             caja = cajas_by_id.get(r.caja_id) if r.caja_id else None
             origen_fmt = ""
-            if r.moneda == "USD" and r.monto_original:
-                origen_fmt = f"USD {r.monto_original:,.2f} @ {r.trm:,.0f}"
+            if r.moneda and r.moneda != "COP" and r.monto_original:
+                origen_fmt = f"{r.moneda} {r.monto_original:,.2f} @ {r.trm:,.0f}"
             rows.append(GastoRow(
                 id=r.id, fecha=r.fecha.isoformat(), descripcion=r.descripcion,
                 categoria=r.categoria, monto=r.monto,
@@ -233,6 +251,7 @@ class GastosState(rx.State):
     def toggle_form(self):
         self.form_open = not self.form_open
         self.form_msg = ""
+        self.form_confirmar_duplicado = False
         if self.form_open:
             self.form_editing_id = None
             self.form_desc = ""
@@ -329,22 +348,25 @@ class GastosState(rx.State):
     @rx.event
     def set_form_moneda(self, value: str):
         self.form_moneda = value
-        if value == "USD" and self.form_trm <= 0:
-            # Obtener TRM actual al cambiar a USD
-            trm = obtener_trm(self.form_fecha)
-            if trm > 0:
-                self.form_trm = trm
+        # Para cualquier moneda no-COP intenta obtener tasa automáticamente.
+        if value != "COP" and self.form_trm <= 0:
+            tasa = obtener_tasa_a_cop(value, self.form_fecha)
+            if tasa > 0:
+                self.form_trm = tasa
                 self._recalcular_monto_cop()
 
     @rx.event
     def refrescar_trm(self):
-        trm = obtener_trm(self.form_fecha)
-        if trm > 0:
-            self.form_trm = trm
+        if self.form_moneda == "COP":
+            self.form_msg = "ℹ La moneda actual es COP, no requiere tasa."
+            return
+        tasa = obtener_tasa_a_cop(self.form_moneda, self.form_fecha)
+        if tasa > 0:
+            self.form_trm = tasa
             self._recalcular_monto_cop()
-            self.form_msg = f"✓ TRM actualizada: ${trm:,.2f}"
+            self.form_msg = f"✓ Tasa {self.form_moneda}→COP actualizada: ${tasa:,.2f}"
         else:
-            self.form_msg = "⚠ No se pudo obtener la TRM."
+            self.form_msg = f"⚠ No se pudo obtener la tasa para {self.form_moneda}."
 
     @rx.event
     def set_form_monto_original(self, value):
@@ -355,7 +377,7 @@ class GastosState(rx.State):
         self._recalcular_monto_cop()
 
     def _recalcular_monto_cop(self):
-        if self.form_moneda == "USD":
+        if self.form_moneda != "COP":
             self.form_monto = self.form_monto_original * self.form_trm
         # Si es COP, form_monto se setea directamente por su setter
 
@@ -379,15 +401,15 @@ class GastosState(rx.State):
             return
 
         # Calcular monto COP final según moneda
-        if self.form_moneda == "USD":
+        if self.form_moneda != "COP":
             if self.form_monto_original <= 0:
-                self.form_msg = "⚠ El monto en USD debe ser mayor a 0."
+                self.form_msg = f"⚠ El monto en {self.form_moneda} debe ser mayor a 0."
                 return
             if self.form_trm <= 0:
-                # Permite ingresar TRM manual cuando la API no respondió.
+                # Permite ingresar tasa manual cuando la API no respondió.
                 self.form_msg = (
-                    "⚠ TRM no disponible. Ingresa la TRM manualmente "
-                    "(campo TRM) y vuelve a guardar."
+                    f"⚠ Tasa {self.form_moneda}→COP no disponible. Ingrésala "
+                    "manualmente y vuelve a guardar."
                 )
                 return
             monto_cop = self.form_monto_original * self.form_trm
@@ -405,6 +427,28 @@ class GastosState(rx.State):
         shopping_group_id = self.form_shopping_group_id if self.form_shopping_group_id > 0 else None
         shopping_item_id = self.form_shopping_item_id if self.form_shopping_item_id > 0 else None
         shopping_pct = float(self.form_shopping_pct or 100.0)
+
+        # ── Detección de duplicados (solo al CREAR) ──
+        # Si ya existe un gasto con la misma fecha, descripción y monto,
+        # pedimos confirmación para evitar capturas dobles accidentales.
+        if not self.form_editing_id and not self.form_confirmar_duplicado:
+            fecha_obj = date.fromisoformat(self.form_fecha)
+            desc_norm = self.form_desc.strip().lower()
+            with rx.session() as s:
+                candidatos = s.exec(
+                    sqlmodel.select(Gasto).where(
+                        Gasto.fecha == fecha_obj,
+                        Gasto.monto == monto_cop,
+                    )
+                ).all()
+            for c in candidatos:
+                if (c.descripcion or "").strip().lower() == desc_norm:
+                    self.form_msg = (
+                        "⚠ Posible duplicado: ya existe un gasto idéntico hoy. "
+                        "Pulsa Guardar nuevamente para confirmar."
+                    )
+                    self.form_confirmar_duplicado = True
+                    return
 
         with rx.session() as s:
             if self.form_editing_id:
@@ -454,6 +498,7 @@ class GastosState(rx.State):
         self.form_open = False
         self.form_editing_id = None
         self.form_msg = ""
+        self.form_confirmar_duplicado = False
         await self.load()
 
     @rx.event
@@ -487,3 +532,140 @@ class GastosState(rx.State):
                 s.delete(row)
                 s.commit()
         await self.load()
+
+    @rx.event
+    async def generar_recurrentes(self):
+        """Replica al periodo activo los gastos marcados como recurrentes
+        del mes inmediatamente anterior, evitando duplicados.
+
+        Reglas:
+        - Solo copia gastos con ``recurrente=True`` del mes anterior.
+        - Mantiene el día del mes original; si no existe en el mes destino
+          (p.ej. 31 → febrero), usa el último día disponible.
+        - No re-genera si ya hay un gasto en el mes destino con misma
+          descripción y monto (idempotente).
+        - El gasto generado se marca también como recurrente para que
+          se pueda volver a propagar en el siguiente periodo.
+        """
+        from calendar import monthrange
+
+        per = await self.get_state(PeriodoState)
+        anio_dest, mes_dest = per.anio, per.mes
+
+        # Mes anterior (origen)
+        if mes_dest == 1:
+            anio_orig, mes_orig = anio_dest - 1, 12
+        else:
+            anio_orig, mes_orig = anio_dest, mes_dest - 1
+
+        ini_orig = date(anio_orig, mes_orig, 1)
+        fin_orig = date(anio_dest, mes_dest, 1)
+        ini_dest = fin_orig
+        if mes_dest == 12:
+            fin_dest = date(anio_dest + 1, 1, 1)
+        else:
+            fin_dest = date(anio_dest, mes_dest + 1, 1)
+
+        dias_mes_dest = monthrange(anio_dest, mes_dest)[1]
+        creados = 0
+        omitidos = 0
+
+        with rx.session() as s:
+            recurrentes = s.exec(
+                sqlmodel.select(Gasto).where(
+                    Gasto.recurrente == True,  # noqa: E712
+                    Gasto.fecha >= ini_orig,
+                    Gasto.fecha < fin_orig,
+                )
+            ).all()
+
+            existentes = s.exec(
+                sqlmodel.select(Gasto).where(
+                    Gasto.fecha >= ini_dest,
+                    Gasto.fecha < fin_dest,
+                )
+            ).all()
+            claves_existentes = {
+                ((g.descripcion or "").strip().lower(), round(g.monto or 0.0, 2))
+                for g in existentes
+            }
+
+            for g in recurrentes:
+                clave = ((g.descripcion or "").strip().lower(), round(g.monto or 0.0, 2))
+                if clave in claves_existentes:
+                    omitidos += 1
+                    continue
+                dia = min(g.fecha.day, dias_mes_dest)
+                nueva_fecha = date(anio_dest, mes_dest, dia)
+                s.add(Gasto(
+                    fecha=nueva_fecha,
+                    descripcion=g.descripcion,
+                    categoria=g.categoria,
+                    monto=g.monto,
+                    moneda=g.moneda or "COP",
+                    monto_original=g.monto_original or g.monto,
+                    trm=g.trm or 0.0,
+                    medio_pago=g.medio_pago,
+                    caja_id=g.caja_id,
+                    shopping_group_id=None,  # no replicar enlace a lista de compras
+                    shopping_item_id=None,
+                    shopping_pct=100.0,
+                    recurrente=True,
+                    notas=g.notas or "",
+                ))
+                creados += 1
+                claves_existentes.add(clave)
+            s.commit()
+
+        if creados == 0 and omitidos == 0:
+            self.form_msg = "ℹ No hay gastos recurrentes en el mes anterior."
+        else:
+            self.form_msg = (
+                f"✓ {creados} gasto(s) recurrente(s) generado(s)."
+                + (f" {omitidos} ya exist\u00edan." if omitidos else "")
+            )
+        await self.load()
+
+    @rx.event
+    async def exportar_csv(self):
+        """Genera CSV con los gastos del periodo activo y lo descarga."""
+        per = await self.get_state(PeriodoState)
+        ini = date.fromisoformat(per.fecha_inicio)
+        fin = date.fromisoformat(per.fecha_fin)
+        with rx.session() as s:
+            gastos = s.exec(
+                sqlmodel.select(Gasto)
+                .where(Gasto.fecha >= ini, Gasto.fecha < fin)
+                .order_by(Gasto.fecha)
+            ).all()
+            cajas_by_id = {
+                c.id: c.nombre
+                for c in s.exec(sqlmodel.select(Caja)).all()
+            }
+
+        headers = [
+            "Fecha", "Descripción", "Categoría", "Monto (COP)",
+            "Moneda", "Monto original", "TRM", "Medio de pago",
+            "Caja", "Recurrente", "Notas",
+        ]
+        filas = [
+            (
+                g.fecha.isoformat(),
+                g.descripcion,
+                g.categoria,
+                f"{g.monto:.2f}",
+                g.moneda or "COP",
+                f"{(g.monto_original or 0):.2f}",
+                f"{(g.trm or 0):.2f}",
+                g.medio_pago,
+                cajas_by_id.get(g.caja_id, "") if g.caja_id else "",
+                "Sí" if g.recurrente else "No",
+                (g.notas or "").replace("\n", " ").replace("\r", " "),
+            )
+            for g in gastos
+        ]
+        from cuentas_pro.services import filas_a_csv
+
+        data = filas_a_csv(headers, filas)
+        nombre = f"gastos-{per.anio:04d}-{per.mes:02d}.csv"
+        return rx.download(data=data, filename=nombre)

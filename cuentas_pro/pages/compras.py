@@ -63,6 +63,66 @@ def _form_item() -> rx.Component:
                 ),
                 rx.text("Primero crea un grupo.", size="2", color=T.TEXT_DIM),
             ),
+
+            # ── Auto-rellenar desde URL (Amazon, MercadoLibre, etc.) ──
+            rx.vstack(
+                field_label("Enlace del producto (opcional)"),
+                rx.hstack(
+                    rx.input(
+                        value=ComprasState.form_item_link,
+                        on_change=ComprasState.set_form_item_link,
+                        placeholder="https://www.amazon.com/...",
+                        background="rgba(255,255,255,0.04)",
+                        border=f"1px solid {T.BORDER}",
+                        border_radius=T.RADIUS_SM,
+                        color=T.TEXT, padding="10px 12px",
+                        height="40px", flex="1",
+                    ),
+                    rx.button(
+                        rx.cond(
+                            ComprasState.autorrellenando,
+                            rx.spinner(size="1"),
+                            rx.icon("sparkles", size=14),
+                        ),
+                        "Auto",
+                        on_click=ComprasState.autorrellenar_link,
+                        disabled=ComprasState.autorrellenando,
+                        background=T.VIOLET, color="white",
+                        height="40px", padding="0 14px",
+                        cursor="pointer", border="none",
+                        border_radius=T.RADIUS_SM,
+                        title="Auto-rellenar nombre e imagen desde la URL",
+                    ),
+                    rx.cond(
+                        ComprasState.form_item_link != "",
+                        rx.button(
+                            rx.icon("x", size=14),
+                            on_click=ComprasState.limpiar_link,
+                            variant="ghost", size="2", cursor="pointer",
+                            color=T.TEXT_MUTED, height="40px",
+                        ),
+                        rx.fragment(),
+                    ),
+                    spacing="2", width="100%",
+                ),
+                rx.cond(
+                    ComprasState.form_item_imagen != "",
+                    rx.hstack(
+                        rx.image(
+                            src=ComprasState.form_item_imagen,
+                            width="64px", height="64px",
+                            border_radius=T.RADIUS_SM,
+                            object_fit="cover",
+                            border=f"1px solid {T.BORDER}",
+                        ),
+                        rx.text("Imagen detectada ✓", size="1", color=T.GREEN),
+                        spacing="2", align="center",
+                    ),
+                    rx.fragment(),
+                ),
+                spacing="1", width="100%", align="stretch",
+            ),
+
             text_field("Nombre", ComprasState.form_item_nombre,
                        ComprasState.set_form_item_nombre,
                        placeholder="Ej: Arroz 5kg"),
@@ -77,7 +137,17 @@ def _form_item() -> rx.Component:
             primary_button("Agregar ítem", ComprasState.crear_item, icon="plus", width="100%"),
             rx.cond(
                 ComprasState.form_item_msg != "",
-                rx.text(ComprasState.form_item_msg, size="2", color=T.AMBER),
+                rx.text(
+                    ComprasState.form_item_msg,
+                    size="2",
+                    color=rx.match(
+                        ComprasState.form_item_msg_kind,
+                        ("ok", T.GREEN),
+                        ("err", T.RED),
+                        ("warn", T.AMBER),
+                        T.TEXT_MUTED,
+                    ),
+                ),
                 rx.fragment(),
             ),
             spacing="3", width="100%", align="stretch",
@@ -113,6 +183,28 @@ def _row_group(g) -> rx.Component:
 def _row_item(it) -> rx.Component:
     return glass_card(
         rx.hstack(
+            rx.cond(
+                it.imagen_url != "",
+                rx.image(
+                    src=it.imagen_url,
+                    width="48px", height="48px",
+                    border_radius=T.RADIUS_SM,
+                    object_fit="cover",
+                    border=f"1px solid {T.BORDER}",
+                    flex_shrink="0",
+                ),
+                rx.box(
+                    rx.icon("shopping-bag", size=20, color=T.TEXT_DIM),
+                    width="48px", height="48px",
+                    border_radius=T.RADIUS_SM,
+                    background="rgba(255,255,255,0.04)",
+                    border=f"1px solid {T.BORDER}",
+                    display="flex",
+                    align_items="center",
+                    justify_content="center",
+                    flex_shrink="0",
+                ),
+            ),
             rx.vstack(
                 rx.hstack(
                     rx.text(it.nombre, size="3", color=T.TEXT, weight="bold"),
@@ -121,6 +213,15 @@ def _row_item(it) -> rx.Component:
                         rx.box(
                             rx.text("Comprado", size="1", color=T.GREEN, weight="medium"),
                             padding="2px 8px", border_radius="999px", background=f"{T.GREEN}22",
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        it.link != "",
+                        rx.link(
+                            rx.icon("external-link", size=12, color=T.VIOLET),
+                            href=it.link, is_external=True,
+                            title="Abrir enlace del producto",
                         ),
                         rx.fragment(),
                     ),
@@ -142,7 +243,7 @@ def _row_item(it) -> rx.Component:
                 on_click=ComprasState.eliminar_item(it.id),
                 variant="ghost", cursor="pointer", size="1", color=T.RED,
             ),
-            spacing="2", width="100%", align="center",
+            spacing="3", width="100%", align="center",
         ),
         padding="12px 14px",
     )

@@ -67,6 +67,7 @@ class PeriodoState(rx.State):
         from cuentas_pro.state.gastos import GastosState
         from cuentas_pro.state.resumen import ResumenState
         from cuentas_pro.state.cajas import CajasState
+        from cuentas_pro.state.presupuestos import PresupuestosState
 
         ing = await self.get_state(IngresosState)
         await ing.load()
@@ -76,3 +77,5 @@ class PeriodoState(rx.State):
         await res.load()
         cajas = await self.get_state(CajasState)
         await cajas.load()
+        pres = await self.get_state(PresupuestosState)
+        await pres.load()

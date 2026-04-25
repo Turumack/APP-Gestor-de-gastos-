@@ -157,6 +157,68 @@ def _recientes() -> rx.Component:
     )
 
 
+def _alerta_pres(a) -> rx.Component:
+    color = rx.cond(a["estado"] == "excedido", T.RED, T.AMBER)
+    icono = rx.cond(a["estado"] == "excedido", "circle-alert", "triangle-alert")
+    return rx.hstack(
+        rx.box(
+            rx.icon(icono, size=14, color="white"),
+            width="32px", height="32px", border_radius="10px",
+            background=color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.vstack(
+            rx.text(a["categoria"], size="2", color=T.TEXT, weight="medium"),
+            rx.hstack(
+                rx.text(a["gastado_fmt"], size="1", color=color, weight="medium",
+                        font_family=T.FONT_MONO),
+                rx.text("/", size="1", color=T.TEXT_DIM),
+                rx.text(a["monto_fmt"], size="1", color=T.TEXT_DIM,
+                        font_family=T.FONT_MONO),
+                spacing="1",
+            ),
+            spacing="1", align="start",
+        ),
+        rx.spacer(),
+        rx.text(a["pct_fmt"], size="2", color=color, weight="bold"),
+        spacing="3", width="100%", align="center",
+        padding="10px 12px",
+        border_radius=T.RADIUS_SM,
+        _hover={"background": "rgba(255,255,255,.03)"},
+    )
+
+
+def _alertas_card() -> rx.Component:
+    return rx.cond(
+        ResumenState.alertas_presupuesto.length() > 0,
+        glass_card(
+            rx.vstack(
+                rx.hstack(
+                    rx.icon("triangle-alert", size=18, color=T.AMBER),
+                    rx.heading("Alertas de presupuesto", size="4",
+                               font_family=T.FONT_HEAD, color=T.TEXT),
+                    rx.spacer(),
+                    rx.link(
+                        rx.hstack(
+                            rx.text("Gestionar", size="2", color=T.VIOLET),
+                            rx.icon("arrow-right", size=14, color=T.VIOLET),
+                            spacing="1",
+                        ),
+                        href="/presupuestos",
+                    ),
+                    width="100%", align="center",
+                ),
+                rx.vstack(
+                    rx.foreach(ResumenState.alertas_presupuesto, _alerta_pres),
+                    spacing="1", width="100%",
+                ),
+                spacing="3", width="100%", align="stretch",
+            ),
+        ),
+        rx.fragment(),
+    )
+
+
 def resumen_page() -> rx.Component:
     return main_layout(
         rx.hstack(
@@ -166,6 +228,12 @@ def resumen_page() -> rx.Component:
         ),
         _metric_grid(),
         rx.box(height="24px"),
+        _alertas_card(),
+        rx.cond(
+            ResumenState.alertas_presupuesto.length() > 0,
+            rx.box(height="24px"),
+            rx.fragment(),
+        ),
         rx.grid(
             _line_gastos(),
             _pie_gastos(),
