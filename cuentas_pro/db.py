@@ -18,8 +18,13 @@ _MIGRATIONS_ADD_COLUMNS = [
     ("gasto",   "shopping_group_id", "INTEGER"),
     ("gasto",   "shopping_item_id",  "INTEGER"),
     ("gasto",   "shopping_pct",      "FLOAT DEFAULT 100"),
+    ("gasto",   "cuotas_total",      "INTEGER DEFAULT 0"),
+    ("gasto",   "cuota_num",         "INTEGER DEFAULT 0"),
+    ("gasto",   "compra_id",         "VARCHAR DEFAULT ''"),
     ("shoppingitem", "imagen_url",   "VARCHAR DEFAULT ''"),
     ("shoppingitem", "link",         "VARCHAR DEFAULT ''"),
+    ("shoppingitem", "recurrente",   "BOOLEAN DEFAULT 0"),
+    ("shoppinggroup", "recurrente",  "BOOLEAN DEFAULT 0"),
 ]
 
 # Índices para acelerar queries por período y por caja.
@@ -34,6 +39,7 @@ _INDEXES = [
     ("idx_movimiento_destino",     "movimiento",   "caja_destino_id"),
     ("idx_shoppingitem_group",     "shoppingitem", "group_id"),
     ("idx_presupuesto_periodo",    "presupuesto",  "anio, mes"),
+    ("idx_gasto_compra_id",        "gasto",        "compra_id"),
 ]
 
 

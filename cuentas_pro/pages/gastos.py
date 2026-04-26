@@ -299,13 +299,46 @@ def _form() -> rx.Component:
                 ),
                 text_field("Notas (opcional)", GastosState.form_notas,
                            GastosState.set_form_notas),
-                rx.hstack(
-                    rx.checkbox(
-                        "Gasto recurrente",
-                        checked=GastosState.form_recurrente,
-                        on_change=GastosState.set_form_recurrente,
+                rx.cond(
+                    GastosState.form_editing_id,
+                    rx.fragment(),
+                    rx.grid(
+                        number_field(
+                            "Cuotas (1 = pago único)",
+                            GastosState.form_cuotas,
+                            GastosState.set_form_cuotas,
+                            step=1,
+                        ),
+                        rx.vstack(
+                            field_label("Info"),
+                            rx.text(
+                                "Si pones más de 1, se generarán N gastos "
+                                "mensuales con monto = total / cuotas.",
+                                size="1", color=T.TEXT_DIM,
+                            ),
+                            spacing="1", align="start",
+                        ),
+                        columns="2", spacing="3", width="100%",
                     ),
-                    spacing="2",
+                ),
+                rx.cond(
+                    GastosState.form_cuotas > 1,
+                    rx.hstack(
+                        rx.icon("info", size=14, color=T.TEXT_DIM),
+                        rx.text(
+                            "«Gasto recurrente» se desactiva cuando hay más de 1 cuota.",
+                            size="1", color=T.TEXT_DIM,
+                        ),
+                        spacing="2", align="center",
+                    ),
+                    rx.hstack(
+                        rx.checkbox(
+                            "Gasto recurrente",
+                            checked=GastosState.form_recurrente,
+                            on_change=GastosState.set_form_recurrente,
+                        ),
+                        spacing="2",
+                    ),
                 ),
                 rx.hstack(
                     primary_button("Guardar", GastosState.guardar, icon="save", flex="1"),
@@ -339,6 +372,20 @@ def _row_gasto(r) -> rx.Component:
                             rx.icon("repeat", size=10, color=T.BLUE),
                             padding="2px 6px", border_radius="999px",
                             background=f"{T.BLUE}22",
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        r.cuotas_label != "",
+                        rx.box(
+                            rx.hstack(
+                                rx.icon("credit-card", size=10, color=T.AMBER),
+                                rx.text(r.cuotas_label, size="1",
+                                        color=T.AMBER, weight="medium"),
+                                spacing="1", align="center",
+                            ),
+                            padding="2px 8px", border_radius="999px",
+                            background=f"{T.AMBER}22",
                         ),
                         rx.fragment(),
                     ),
@@ -397,6 +444,18 @@ def _row_gasto(r) -> rx.Component:
                     variant="ghost", cursor="pointer", size="1",
                     color=T.RED,
                     _hover={"background": f"{T.RED}15"},
+                ),
+                rx.cond(
+                    r.cuotas_label != "",
+                    rx.button(
+                        rx.icon("trash", size=14),
+                        on_click=GastosState.eliminar_compra(r.compra_id),
+                        variant="ghost", cursor="pointer", size="1",
+                        color=T.AMBER,
+                        title="Eliminar TODAS las cuotas de esta compra",
+                        _hover={"background": f"{T.AMBER}20"},
+                    ),
+                    rx.fragment(),
                 ),
                 spacing="1",
             ),

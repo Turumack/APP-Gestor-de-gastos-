@@ -1,4 +1,5 @@
 """State de Gastos."""
+import uuid
 from datetime import date
 from calendar import monthrange
 from typing import Optional
@@ -11,6 +12,21 @@ from cuentas_pro.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA, MEDIOS_PAGO, 
 from cuentas_pro.services import obtener_trm, obtener_tasa_a_cop
 from cuentas_pro.state.periodo import PeriodoState
 from cuentas_pro.state._autosetters import auto_setters
+
+
+def _avanzar_meses(f: date, n: int) -> date:
+    """Suma ``n`` meses a ``f`` respetando el fin de mes."""
+    if n == 0:
+        return f
+    y, m = f.year, f.month + n
+    while m > 12:
+        m -= 12
+        y += 1
+    while m < 1:
+        m += 12
+        y -= 1
+    d = min(f.day, monthrange(y, m)[1])
+    return date(y, m, d)
 
 
 class GastoRow(BaseModel):
@@ -28,6 +44,8 @@ class GastoRow(BaseModel):
     caja_nombre: str
     shopping_ref: str
     recurrente: bool
+    cuotas_label: str  # "2/4" si es cuota, "" si no
+    compra_id: str     # uuid agrupador de cuotas ("" si no es a cuotas)
     notas: str
     color: str
 
@@ -68,6 +86,9 @@ class GastosState(rx.State):
     form_shopping_item_id: int = 0
     form_shopping_pct: float = 100.0
     form_recurrente: bool = False
+    # Cuotas: 1 = pago único. >1 = se generan N gastos mensuales
+    # con monto = total/cuotas, fechas avanzando un mes cada vez.
+    form_cuotas: int = 1
     form_notas: str = ""
     form_editing_id: Optional[int] = None
     form_msg: str = ""
@@ -175,7 +196,14 @@ class GastosState(rx.State):
                 caja_nombre=(caja.nombre if caja else ""),
                 shopping_ref=self._shopping_ref_text(r.shopping_group_id, r.shopping_item_id,
                                                      groups_by_id, items_by_id),
-                recurrente=r.recurrente, notas=r.notas or "",
+                recurrente=r.recurrente,
+                cuotas_label=(
+                    f"{r.cuota_num}/{r.cuotas_total}"
+                    if (r.cuotas_total or 0) > 1 and (r.cuota_num or 0) > 0
+                    else ""
+                ),
+                compra_id=(r.compra_id or ""),
+                notas=r.notas or "",
                 color=COLOR_CATEGORIA.get(r.categoria, "#94a3b8"),
             ))
             total += r.monto
@@ -261,6 +289,7 @@ class GastosState(rx.State):
             self.form_trm = 0.0
             self.form_notas = ""
             self.form_recurrente = False
+            self.form_cuotas = 1
             self.form_caja_id = 0
             self.form_shopping_group_id = 0
             self.form_shopping_item_id = 0
@@ -295,6 +324,28 @@ class GastosState(rx.State):
             self.form_shopping_group_id = 0
         self.form_shopping_item_id = 0
         self._refresh_shopping_items_opts()
+
+    @rx.event
+    def set_form_shopping_item_id(self, value):
+        """Al seleccionar un ítem de lista, auto-carga monto/desc/categoría."""
+        try:
+            self.form_shopping_item_id = int(value) if value not in ("", None) else 0
+        except (TypeError, ValueError):
+            self.form_shopping_item_id = 0
+        if self.form_shopping_item_id > 0:
+            # Reutiliza la lógica de "Cargar ítem".
+            self.aplicar_item_lista()
+
+    @rx.event
+    def set_form_cuotas(self, value):
+        """A cuotas > 1, recurrente deja de tener sentido: lo apaga."""
+        try:
+            v = int(float(value)) if value not in ("", None) else 1
+        except (TypeError, ValueError):
+            v = 1
+        self.form_cuotas = max(1, v)
+        if self.form_cuotas > 1:
+            self.form_recurrente = False
 
     @rx.event
     def aplicar_item_lista(self):
@@ -470,27 +521,71 @@ class GastosState(rx.State):
                     row.notas = self.form_notas
                     s.add(row)
             else:
-                s.add(Gasto(
-                    fecha=date.fromisoformat(self.form_fecha),
-                    descripcion=self.form_desc.strip(),
-                    categoria=self.form_categoria,
-                    monto=monto_cop,
-                    moneda=self.form_moneda,
-                    monto_original=monto_original,
-                    trm=trm,
-                    medio_pago=self.form_medio,
-                    caja_id=caja_id,
-                    shopping_group_id=shopping_group_id,
-                    shopping_item_id=shopping_item_id,
-                    shopping_pct=shopping_pct,
-                    recurrente=self.form_recurrente,
-                    notas=self.form_notas,
-                ))
+                cuotas = max(1, int(self.form_cuotas or 1))
+                if cuotas > 1:
+                    # ── Compra a cuotas: generar N gastos mensuales ──
+                    compra_id = uuid.uuid4().hex[:12]
+                    monto_cuota = round(monto_cop / cuotas)
+                    monto_orig_cuota = (
+                        round(monto_original / cuotas, 2)
+                        if self.form_moneda != "COP" else monto_cuota
+                    )
+                    # Ajuste para que la suma cuadre exactamente con el total.
+                    delta = monto_cop - monto_cuota * cuotas
+                    fecha0 = date.fromisoformat(self.form_fecha)
+                    desc_base = self.form_desc.strip()
+                    for i in range(cuotas):
+                        f_i = _avanzar_meses(fecha0, i)
+                        m_i = monto_cuota + (delta if i == cuotas - 1 else 0)
+                        mo_i = (
+                            monto_orig_cuota + (
+                                round(monto_original - monto_orig_cuota * cuotas, 2)
+                                if self.form_moneda != "COP" else 0
+                            )
+                            if i == cuotas - 1 else monto_orig_cuota
+                        )
+                        s.add(Gasto(
+                            fecha=f_i,
+                            descripcion=f"{desc_base} ({i + 1}/{cuotas})",
+                            categoria=self.form_categoria,
+                            monto=m_i,
+                            moneda=self.form_moneda,
+                            monto_original=mo_i,
+                            trm=trm,
+                            medio_pago=self.form_medio,
+                            caja_id=caja_id,
+                            shopping_group_id=shopping_group_id,
+                            shopping_item_id=shopping_item_id,
+                            shopping_pct=shopping_pct,
+                            recurrente=False,           # cuotas NO se replican
+                            cuotas_total=cuotas,
+                            cuota_num=i + 1,
+                            compra_id=compra_id,
+                            notas=self.form_notas,
+                        ))
+                else:
+                    s.add(Gasto(
+                        fecha=date.fromisoformat(self.form_fecha),
+                        descripcion=self.form_desc.strip(),
+                        categoria=self.form_categoria,
+                        monto=monto_cop,
+                        moneda=self.form_moneda,
+                        monto_original=monto_original,
+                        trm=trm,
+                        medio_pago=self.form_medio,
+                        caja_id=caja_id,
+                        shopping_group_id=shopping_group_id,
+                        shopping_item_id=shopping_item_id,
+                        shopping_pct=shopping_pct,
+                        recurrente=self.form_recurrente,
+                        notas=self.form_notas,
+                    ))
 
-            # Si se guardó un gasto con un ítem completo de lista, lo marca comprado.
+            # Si se guardó un gasto con un ítem completo de lista, lo marca comprado
+            # — excepto si el ítem es recurrente (mercado, etc.), que no se "agota".
             if shopping_item_id and shopping_pct >= 99.99:
                 it = s.get(ShoppingItem, shopping_item_id)
-                if it:
+                if it and not bool(getattr(it, "recurrente", False)):
                     it.comprado = True
                     s.add(it)
             s.commit()
@@ -499,6 +594,7 @@ class GastosState(rx.State):
         self.form_editing_id = None
         self.form_msg = ""
         self.form_confirmar_duplicado = False
+        self.form_cuotas = 1
         await self.load()
 
     @rx.event
@@ -521,6 +617,7 @@ class GastosState(rx.State):
                 self.form_shopping_pct = row.shopping_pct or 100.0
                 self._refresh_shopping_items_opts()
                 self.form_recurrente = row.recurrente
+                self.form_cuotas = 1  # al editar, no se vuelve a dividir
                 self.form_notas = row.notas or ""
                 self.form_open = True
 
@@ -531,6 +628,24 @@ class GastosState(rx.State):
             if row:
                 s.delete(row)
                 s.commit()
+        await self.load()
+
+    @rx.event
+    async def eliminar_compra(self, compra_id: str):
+        """Elimina TODAS las cuotas de una compra (mismo ``compra_id``)."""
+        cid = (compra_id or "").strip()
+        if not cid:
+            return
+        with rx.session() as s:
+            filas = s.exec(
+                sqlmodel.select(Gasto).where(Gasto.compra_id == cid)
+            ).all()
+            n = 0
+            for f in filas:
+                s.delete(f)
+                n += 1
+            s.commit()
+        self.form_msg = f"✓ {n} cuota(s) eliminada(s) de la compra."
         await self.load()
 
     @rx.event

@@ -48,6 +48,12 @@ class Gasto(rx.Model, table=True):
     shopping_item_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="shoppingitem.id")
     shopping_pct: float = 100.0
     recurrente: bool = False
+    # Cuotas: si una compra grande se paga a N meses, se crea un Gasto por
+    # cada cuota (mismo compra_id), con cuota_num = 1..cuotas_total y
+    # monto = total / cuotas_total. cuotas_total = 0 o 1 ⇒ no es a cuotas.
+    cuotas_total: int = 0
+    cuota_num: int = 0
+    compra_id: str = ""  # uuid corto que agrupa todas las cuotas
     notas: str = ""
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
@@ -91,6 +97,7 @@ class ShoppingGroup(rx.Model, table=True):
     nombre: str = ""
     categoria_default: str = "Otros"
     activa: bool = True
+    recurrente: bool = False  # si True, sus ítems se consideran de compra recurrente
     notas: str = ""
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
@@ -104,6 +111,7 @@ class ShoppingItem(rx.Model, table=True):
     monto_estimado: float = 0.0
     comprado: bool = False
     activo: bool = True
+    recurrente: bool = False  # True = compra recurrente (no se "agota" al comprarla)
     notas: str = ""
     imagen_url: str = ""   # miniatura (OpenGraph image)
     link: str = ""         # URL del producto (Amazon, MercadoLibre, etc.)
