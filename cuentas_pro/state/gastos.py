@@ -29,6 +29,38 @@ def _avanzar_meses(f: date, n: int) -> date:
     return date(y, m, d)
 
 
+def _avanzar_periodo(f: date, unidad: str, intervalo: int) -> date:
+    """Devuelve la siguiente ocurrencia avanzando ``intervalo`` unidades."""
+    intervalo = max(1, int(intervalo or 1))
+    u = (unidad or "mes").lower()
+    from datetime import timedelta
+    if u == "dia":
+        return f + timedelta(days=intervalo)
+    if u == "semana":
+        return f + timedelta(weeks=intervalo)
+    if u == "anio" or u == "año":
+        return _avanzar_meses(f, intervalo * 12)
+    # default: mes
+    return _avanzar_meses(f, intervalo)
+
+
+def _label_recurrencia(unidad: str, intervalo: int) -> str:
+    """Etiqueta humana corta para la recurrencia (ej. 'cada 2 meses')."""
+    intervalo = max(1, int(intervalo or 1))
+    u = (unidad or "mes").lower()
+    nombres = {
+        "dia": ("día", "días"),
+        "semana": ("semana", "semanas"),
+        "mes": ("mes", "meses"),
+        "anio": ("año", "años"),
+        "año": ("año", "años"),
+    }
+    sing, plur = nombres.get(u, ("mes", "meses"))
+    if intervalo == 1:
+        return f"cada {sing}"
+    return f"cada {intervalo} {plur}"
+
+
 class GastoRow(BaseModel):
     id: int
     fecha: str
@@ -44,6 +76,7 @@ class GastoRow(BaseModel):
     caja_nombre: str
     shopping_ref: str
     recurrente: bool
+    recurrencia_label: str  # "cada 2 meses" o "" si no es recurrente
     cuotas_label: str  # "2/4" si es cuota, "" si no
     compra_id: str     # uuid agrupador de cuotas ("" si no es a cuotas)
     notas: str
@@ -86,6 +119,9 @@ class GastosState(rx.State):
     form_shopping_item_id: int = 0
     form_shopping_pct: float = 100.0
     form_recurrente: bool = False
+    # Recurrencia avanzada
+    form_recurrencia_unidad: str = "mes"   # dia|semana|mes|anio
+    form_recurrencia_intervalo: int = 1
     # Cuotas: 1 = pago único. >1 = se generan N gastos mensuales
     # con monto = total/cuotas, fechas avanzando un mes cada vez.
     form_cuotas: int = 1
@@ -197,6 +233,11 @@ class GastosState(rx.State):
                 shopping_ref=self._shopping_ref_text(r.shopping_group_id, r.shopping_item_id,
                                                      groups_by_id, items_by_id),
                 recurrente=r.recurrente,
+                recurrencia_label=(
+                    _label_recurrencia(r.recurrencia_unidad or "mes",
+                                       r.recurrencia_intervalo or 1)
+                    if r.recurrente else ""
+                ),
                 cuotas_label=(
                     f"{r.cuota_num}/{r.cuotas_total}"
                     if (r.cuotas_total or 0) > 1 and (r.cuota_num or 0) > 0
@@ -289,6 +330,8 @@ class GastosState(rx.State):
             self.form_trm = 0.0
             self.form_notas = ""
             self.form_recurrente = False
+            self.form_recurrencia_unidad = "mes"
+            self.form_recurrencia_intervalo = 1
             self.form_cuotas = 1
             self.form_caja_id = 0
             self.form_shopping_group_id = 0
@@ -518,6 +561,13 @@ class GastosState(rx.State):
                     row.shopping_item_id = shopping_item_id
                     row.shopping_pct = shopping_pct
                     row.recurrente = self.form_recurrente
+                    row.recurrencia_unidad = (
+                        self.form_recurrencia_unidad if self.form_recurrente else ""
+                    )
+                    row.recurrencia_intervalo = (
+                        max(1, int(self.form_recurrencia_intervalo or 1))
+                        if self.form_recurrente else 1
+                    )
                     row.notas = self.form_notas
                     s.add(row)
             else:
@@ -578,6 +628,13 @@ class GastosState(rx.State):
                         shopping_item_id=shopping_item_id,
                         shopping_pct=shopping_pct,
                         recurrente=self.form_recurrente,
+                        recurrencia_unidad=(
+                            self.form_recurrencia_unidad if self.form_recurrente else ""
+                        ),
+                        recurrencia_intervalo=(
+                            max(1, int(self.form_recurrencia_intervalo or 1))
+                            if self.form_recurrente else 1
+                        ),
                         notas=self.form_notas,
                     ))
 
@@ -617,6 +674,8 @@ class GastosState(rx.State):
                 self.form_shopping_pct = row.shopping_pct or 100.0
                 self._refresh_shopping_items_opts()
                 self.form_recurrente = row.recurrente
+                self.form_recurrencia_unidad = row.recurrencia_unidad or "mes"
+                self.form_recurrencia_intervalo = max(1, int(row.recurrencia_intervalo or 1))
                 self.form_cuotas = 1  # al editar, no se vuelve a dividir
                 self.form_notas = row.notas or ""
                 self.form_open = True
@@ -650,47 +709,31 @@ class GastosState(rx.State):
 
     @rx.event
     async def generar_recurrentes(self):
-        """Replica al periodo activo los gastos marcados como recurrentes
-        del mes inmediatamente anterior, evitando duplicados.
+        """Genera las ocurrencias de gastos recurrentes que caen en el periodo activo.
 
-        Reglas:
-        - Solo copia gastos con ``recurrente=True`` del mes anterior.
-        - Mantiene el día del mes original; si no existe en el mes destino
-          (p.ej. 31 → febrero), usa el último día disponible.
-        - No re-genera si ya hay un gasto en el mes destino con misma
-          descripción y monto (idempotente).
-        - El gasto generado se marca también como recurrente para que
-          se pueda volver a propagar en el siguiente periodo.
+        Para cada Gasto con ``recurrente=True``, se calculan las fechas
+        siguientes a partir de ``fecha`` avanzando ``recurrencia_intervalo``
+        unidades de ``recurrencia_unidad`` (día/semana/mes/año) hasta llegar
+        al final del periodo. Las que caigan dentro del periodo activo se
+        crean como copias (``recurrente=False`` para no encadenar).
+
+        Es idempotente: omite copias si ya existe un gasto con la misma
+        descripción, monto y fecha.
         """
-        from calendar import monthrange
-
         per = await self.get_state(PeriodoState)
-        anio_dest, mes_dest = per.anio, per.mes
+        ini_dest = date.fromisoformat(per.fecha_inicio)
+        fin_dest = date.fromisoformat(per.fecha_fin)
 
-        # Mes anterior (origen)
-        if mes_dest == 1:
-            anio_orig, mes_orig = anio_dest - 1, 12
-        else:
-            anio_orig, mes_orig = anio_dest, mes_dest - 1
-
-        ini_orig = date(anio_orig, mes_orig, 1)
-        fin_orig = date(anio_dest, mes_dest, 1)
-        ini_dest = fin_orig
-        if mes_dest == 12:
-            fin_dest = date(anio_dest + 1, 1, 1)
-        else:
-            fin_dest = date(anio_dest, mes_dest + 1, 1)
-
-        dias_mes_dest = monthrange(anio_dest, mes_dest)[1]
         creados = 0
         omitidos = 0
+        # Tope de seguridad: evita bucles infinitos por configuraciones raras.
+        _MAX_ITER = 5000
 
         with rx.session() as s:
             recurrentes = s.exec(
                 sqlmodel.select(Gasto).where(
                     Gasto.recurrente == True,  # noqa: E712
-                    Gasto.fecha >= ini_orig,
-                    Gasto.fecha < fin_orig,
+                    Gasto.fecha < fin_dest,
                 )
             ).all()
 
@@ -701,39 +744,57 @@ class GastosState(rx.State):
                 )
             ).all()
             claves_existentes = {
-                ((g.descripcion or "").strip().lower(), round(g.monto or 0.0, 2))
+                ((g.descripcion or "").strip().lower(),
+                 round(g.monto or 0.0, 2),
+                 g.fecha.isoformat())
                 for g in existentes
             }
 
             for g in recurrentes:
-                clave = ((g.descripcion or "").strip().lower(), round(g.monto or 0.0, 2))
-                if clave in claves_existentes:
-                    omitidos += 1
-                    continue
-                dia = min(g.fecha.day, dias_mes_dest)
-                nueva_fecha = date(anio_dest, mes_dest, dia)
-                s.add(Gasto(
-                    fecha=nueva_fecha,
-                    descripcion=g.descripcion,
-                    categoria=g.categoria,
-                    monto=g.monto,
-                    moneda=g.moneda or "COP",
-                    monto_original=g.monto_original or g.monto,
-                    trm=g.trm or 0.0,
-                    medio_pago=g.medio_pago,
-                    caja_id=g.caja_id,
-                    shopping_group_id=None,  # no replicar enlace a lista de compras
-                    shopping_item_id=None,
-                    shopping_pct=100.0,
-                    recurrente=True,
-                    notas=g.notas or "",
-                ))
-                creados += 1
-                claves_existentes.add(clave)
+                unidad = g.recurrencia_unidad or "mes"
+                intervalo = max(1, int(g.recurrencia_intervalo or 1))
+                # Avanza desde la fecha original hasta el periodo destino.
+                f = g.fecha
+                it = 0
+                while f < ini_dest and it < _MAX_ITER:
+                    f = _avanzar_periodo(f, unidad, intervalo)
+                    it += 1
+                # Genera todas las ocurrencias que caigan dentro del periodo.
+                while ini_dest <= f < fin_dest and it < _MAX_ITER:
+                    clave = (
+                        (g.descripcion or "").strip().lower(),
+                        round(g.monto or 0.0, 2),
+                        f.isoformat(),
+                    )
+                    if clave in claves_existentes:
+                        omitidos += 1
+                    else:
+                        s.add(Gasto(
+                            fecha=f,
+                            descripcion=g.descripcion,
+                            categoria=g.categoria,
+                            monto=g.monto,
+                            moneda=g.moneda or "COP",
+                            monto_original=g.monto_original or g.monto,
+                            trm=g.trm or 0.0,
+                            medio_pago=g.medio_pago,
+                            caja_id=g.caja_id,
+                            shopping_group_id=None,
+                            shopping_item_id=None,
+                            shopping_pct=100.0,
+                            recurrente=False,  # las copias NO encadenan
+                            recurrencia_unidad="",
+                            recurrencia_intervalo=1,
+                            notas=g.notas or "",
+                        ))
+                        creados += 1
+                        claves_existentes.add(clave)
+                    f = _avanzar_periodo(f, unidad, intervalo)
+                    it += 1
             s.commit()
 
         if creados == 0 and omitidos == 0:
-            self.form_msg = "ℹ No hay gastos recurrentes en el mes anterior."
+            self.form_msg = "ℹ No hay gastos recurrentes que apliquen al periodo."
         else:
             self.form_msg = (
                 f"✓ {creados} gasto(s) recurrente(s) generado(s)."

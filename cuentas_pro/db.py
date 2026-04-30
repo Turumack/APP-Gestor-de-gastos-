@@ -25,6 +25,8 @@ _MIGRATIONS_ADD_COLUMNS = [
     ("shoppingitem", "link",         "VARCHAR DEFAULT ''"),
     ("shoppingitem", "recurrente",   "BOOLEAN DEFAULT 0"),
     ("shoppinggroup", "recurrente",  "BOOLEAN DEFAULT 0"),
+    ("gasto", "recurrencia_unidad",     "VARCHAR DEFAULT ''"),
+    ("gasto", "recurrencia_intervalo",  "INTEGER DEFAULT 1"),
 ]
 
 # Índices para acelerar queries por período y por caja.

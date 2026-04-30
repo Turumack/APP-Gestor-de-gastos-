@@ -48,6 +48,10 @@ class Gasto(rx.Model, table=True):
     shopping_item_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="shoppingitem.id")
     shopping_pct: float = 100.0
     recurrente: bool = False
+    # Recurrencia avanzada: unidad ("dia"|"semana"|"mes"|"ñ") + intervalo (cada N).
+    # Vacío o "mes"+1 = mensual clásico (compatible con datos antiguos).
+    recurrencia_unidad: str = ""   # "" | "dia" | "semana" | "mes" | "anio"
+    recurrencia_intervalo: int = 1
     # Cuotas: si una compra grande se paga a N meses, se crea un Gasto por
     # cada cuota (mismo compra_id), con cuota_num = 1..cuotas_total y
     # monto = total / cuotas_total. cuotas_total = 0 o 1 ⇒ no es a cuotas.

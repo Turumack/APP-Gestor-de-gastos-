@@ -331,13 +331,46 @@ def _form() -> rx.Component:
                         ),
                         spacing="2", align="center",
                     ),
-                    rx.hstack(
-                        rx.checkbox(
-                            "Gasto recurrente",
-                            checked=GastosState.form_recurrente,
-                            on_change=GastosState.set_form_recurrente,
+                    rx.vstack(
+                        rx.hstack(
+                            rx.checkbox(
+                                "Gasto recurrente",
+                                checked=GastosState.form_recurrente,
+                                on_change=GastosState.set_form_recurrente,
+                            ),
+                            spacing="2",
                         ),
-                        spacing="2",
+                        rx.cond(
+                            GastosState.form_recurrente,
+                            rx.grid(
+                                select_field(
+                                    "Frecuencia",
+                                    GastosState.form_recurrencia_unidad,
+                                    GastosState.set_form_recurrencia_unidad,
+                                    ["dia", "semana", "mes", "anio"],
+                                ),
+                                number_field(
+                                    "Cada",
+                                    GastosState.form_recurrencia_intervalo,
+                                    GastosState.set_form_recurrencia_intervalo,
+                                    step=1,
+                                ),
+                                rx.vstack(
+                                    field_label("Ejemplo"),
+                                    rx.text(
+                                        "Se replicará " +
+                                        "cada " +
+                                        GastosState.form_recurrencia_intervalo.to_string() +
+                                        " " + GastosState.form_recurrencia_unidad + "(s).",
+                                        size="1", color=T.TEXT_DIM,
+                                    ),
+                                    spacing="1", align="start",
+                                ),
+                                columns="3", spacing="3", width="100%",
+                            ),
+                            rx.fragment(),
+                        ),
+                        spacing="2", align="stretch", width="100%",
                     ),
                 ),
                 rx.hstack(
@@ -369,8 +402,13 @@ def _row_gasto(r) -> rx.Component:
                     rx.cond(
                         r.recurrente,
                         rx.box(
-                            rx.icon("repeat", size=10, color=T.BLUE),
-                            padding="2px 6px", border_radius="999px",
+                            rx.hstack(
+                                rx.icon("repeat", size=10, color=T.BLUE),
+                                rx.text(r.recurrencia_label, size="1",
+                                        color=T.BLUE, weight="medium"),
+                                spacing="1", align="center",
+                            ),
+                            padding="2px 8px", border_radius="999px",
                             background=f"{T.BLUE}22",
                         ),
                         rx.fragment(),
