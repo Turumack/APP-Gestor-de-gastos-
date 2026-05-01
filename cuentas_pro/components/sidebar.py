@@ -93,12 +93,12 @@ def sidebar() -> rx.Component:
 
             # ── Footer ──
             rx.box(
-                rx.text("v2.0 · Local", size="1", color=T.TEXT_DIM, text_align="center"),
+                rx.text("v2.5 · Local", size="1", color=T.TEXT_DIM, text_align="center"),
                 padding="12px",
                 width="100%",
             ),
             spacing="1",
-            height="100vh",
+            height="98vh",
             align="stretch",
         ),
         position="sticky",
