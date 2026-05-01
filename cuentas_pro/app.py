@@ -31,23 +31,23 @@ app = rx.App(
     ],
 )
 
-app.add_page(home_page,        route="/",            title="Cuentas PRO",
+app.add_page(home_page,        route="/",            title="Minty",
              on_load=ResumenState.load)
-app.add_page(resumen_page,     route="/resumen",     title="Resumen · Cuentas PRO",
+app.add_page(resumen_page,     route="/resumen",     title="Resumen · Minty",
              on_load=ResumenState.load)
-app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · Cuentas PRO",
+app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · Minty",
              on_load=IngresosState.load)
-app.add_page(gastos_page,      route="/gastos",      title="Gastos · Cuentas PRO",
+app.add_page(gastos_page,      route="/gastos",      title="Gastos · Minty",
              on_load=GastosState.load)
-app.add_page(compras_page,     route="/compras",     title="Listas de compra · Cuentas PRO",
+app.add_page(compras_page,     route="/compras",     title="Listas de compra · Minty",
              on_load=ComprasState.load)
-app.add_page(cajas_page,       route="/cajas",       title="Cajas · Cuentas PRO",
+app.add_page(cajas_page,       route="/cajas",       title="Cajas · Minty",
              on_load=CajasState.load)
-app.add_page(inversiones_page, route="/inversiones", title="Inversiones · Cuentas PRO",
+app.add_page(inversiones_page, route="/inversiones", title="Inversiones · Minty",
              on_load=InversionesState.load)
-app.add_page(baul_page,        route="/baul",        title="Baúl · Cuentas PRO",
+app.add_page(baul_page,        route="/baul",        title="Baúl · Minty",
              on_load=BaulState.load)
-app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · Cuentas PRO",
+app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · Minty",
              on_load=PresupuestosState.load)
-app.add_page(configuracion_page, route="/configuracion", title="Configuración · Cuentas PRO",
+app.add_page(configuracion_page, route="/configuracion", title="Configuración · Minty",
              on_load=ConfigState.load)
