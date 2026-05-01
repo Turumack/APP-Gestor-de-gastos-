@@ -1,13 +1,13 @@
 """P\u00e1gina Ingresos — simple + calculadora laboral."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     text_field, number_field, date_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.ingresos import IngresosState
-from cuentas_pro.state import PeriodoState
+from minty.state.ingresos import IngresosState
+from minty.state import PeriodoState
 
 
 # ─────────────────────────────────────────────

@@ -3,9 +3,9 @@ from datetime import date
 import reflex as rx
 import sqlmodel
 
-from cuentas_pro.models import Ingreso, Gasto, Presupuesto
-from cuentas_pro.finance import calculate_net_income, COLOR_CATEGORIA
-from cuentas_pro.state.periodo import PeriodoState
+from minty.models import Ingreso, Gasto, Presupuesto
+from minty.finance import calculate_net_income, COLOR_CATEGORIA
+from minty.state.periodo import PeriodoState
 
 
 class ResumenState(rx.State):

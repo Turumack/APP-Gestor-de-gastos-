@@ -1,7 +1,7 @@
 """Selector de mes/a\u00f1o compacto para el sidebar."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.state import PeriodoState
+from minty import theme as T
+from minty.state import PeriodoState
 
 
 def period_selector() -> rx.Component:

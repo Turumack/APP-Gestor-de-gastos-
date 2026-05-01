@@ -1,14 +1,14 @@
 """Página Presupuestos por categoría."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     number_field, select_field, text_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.presupuestos import PresupuestosState
-from cuentas_pro.state import PeriodoState
-from cuentas_pro.finance import CATEGORIAS_GASTO
+from minty.state.presupuestos import PresupuestosState
+from minty.state import PeriodoState
+from minty.finance import CATEGORIAS_GASTO
 
 
 def _form() -> rx.Component:

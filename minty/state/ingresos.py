@@ -5,13 +5,13 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import Ingreso, Caja
-from cuentas_pro.finance import (
+from minty.models import Ingreso, Caja
+from minty.finance import (
     calcular_extras, valor_hora_ordinaria, calculate_net_income,
     RECARGOS, RECARGO_LABELS, HORAS_SEMANA_LEGAL, horas_mes_desde_semana,
 )
-from cuentas_pro.state.periodo import PeriodoState
-from cuentas_pro.state._autosetters import auto_setters
+from minty.state.periodo import PeriodoState
+from minty.state._autosetters import auto_setters
 
 
 class IngresoRow(BaseModel):

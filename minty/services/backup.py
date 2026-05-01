@@ -1,6 +1,6 @@
 """Backup automático de la base de datos local.
 
-Crea un snapshot comprimido (.zip) de ``data/cuentas.db`` en
+Crea un snapshot comprimido (.zip) de ``data/minty.db`` en
 ``data/backups/`` cada vez que la app arranca y han pasado al menos
 ``MIN_HOURS_BETWEEN_BACKUPS`` horas desde el último backup. Mantiene los
 ``MAX_BACKUPS`` más recientes y elimina el resto.
@@ -21,7 +21,7 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 DATA_DIR = Path("data")
-DB_PATH = DATA_DIR / "cuentas.db"
+DB_PATH = DATA_DIR / "minty.db"
 BACKUP_DIR = DATA_DIR / "backups"
 
 MIN_HOURS_BETWEEN_BACKUPS = 24
@@ -73,15 +73,15 @@ def restaurar_backup(nombre_zip: str) -> bool:
         seguridad = BACKUP_DIR / f"cuentas-pre-restore-{ts}.zip"
         try:
             with zipfile.ZipFile(seguridad, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.write(DB_PATH, arcname="cuentas.db")
+                zf.write(DB_PATH, arcname="minty.db")
         except Exception as e:  # no abortar si falla la copia previa
             log.warning("No se pudo crear backup pre-restore: %s", e)
 
     with zipfile.ZipFile(src, "r") as zf:
         nombres = zf.namelist()
-        if "cuentas.db" not in nombres:
-            raise ValueError(f"El zip no contiene 'cuentas.db': {nombre_zip}")
-        zf.extract("cuentas.db", path=DATA_DIR)
+        if "minty.db" not in nombres:
+            raise ValueError(f"El zip no contiene 'minty.db': {nombre_zip}")
+        zf.extract("minty.db", path=DATA_DIR)
     return True
 
 
@@ -122,7 +122,7 @@ def hacer_backup(force: bool = False) -> Path | None:
         zip_path = BACKUP_DIR / f"cuentas-{ts}.zip"
 
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.write(DB_PATH, arcname="cuentas.db")
+            zf.write(DB_PATH, arcname="minty.db")
 
         _purgar_antiguos()
         log.info("Backup creado: %s", zip_path)

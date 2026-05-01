@@ -10,7 +10,7 @@ from pathlib import Path
 
 import reflex as rx
 
-from cuentas_pro.services import (
+from minty.services import (
     BACKUP_DIR, hacer_backup, listar_backups, restaurar_backup,
 )
 
@@ -104,7 +104,7 @@ class ConfigState(rx.State):
         try:
             data = await f.read()
             BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-            # Validar que contenga cuentas.db antes de aceptarlo.
+            # Validar que contenga minty.db antes de aceptarlo.
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".zip", dir=str(BACKUP_DIR),
             ) as tmp:
@@ -112,8 +112,8 @@ class ConfigState(rx.State):
                 tmp_path = Path(tmp.name)
             try:
                 with zipfile.ZipFile(tmp_path, "r") as zf:
-                    if "cuentas.db" not in zf.namelist():
-                        raise ValueError("El zip no contiene 'cuentas.db'.")
+                    if "minty.db" not in zf.namelist():
+                        raise ValueError("El zip no contiene 'minty.db'.")
                 # Renombrar al nombre final (con timestamp para evitar choques).
                 ts = datetime.now().strftime("%Y%m%d-%H%M%S")
                 base = Path(nombre).stem

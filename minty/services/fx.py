@@ -33,7 +33,7 @@ def obtener_tasa_a_cop(moneda: str, fecha: Optional[str] = None,
     """Tasa ``moneda → COP`` para la fecha dada.
 
     - ``COP`` → 1.0
-    - ``USD`` → delega en :func:`cuentas_pro.services.trm.obtener_trm`.
+    - ``USD`` → delega en :func:`minty.services.trm.obtener_trm`.
     - Otras (``EUR`` por ahora) → frankfurter.app.
 
     Si la API falla retorna el último valor exitoso (o 0.0 si nunca se
@@ -43,7 +43,7 @@ def obtener_tasa_a_cop(moneda: str, fecha: Optional[str] = None,
     if moneda == "COP":
         return 1.0
     if moneda == "USD":
-        from cuentas_pro.services.trm import obtener_trm
+        from minty.services.trm import obtener_trm
         return obtener_trm(fecha, timeout=timeout)
 
     fecha = fecha or _hoy_iso()

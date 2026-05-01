@@ -5,10 +5,10 @@ import sqlmodel
 from pydantic import BaseModel
 from typing import Optional
 
-from cuentas_pro.models import Presupuesto, Gasto
-from cuentas_pro.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA
-from cuentas_pro.state.periodo import PeriodoState
-from cuentas_pro.state._autosetters import auto_setters
+from minty.models import Presupuesto, Gasto
+from minty.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA
+from minty.state.periodo import PeriodoState
+from minty.state._autosetters import auto_setters
 
 
 class PresupuestoRow(BaseModel):

@@ -1,12 +1,12 @@
 """P\u00e1gina Ba\u00fal."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     text_field, select_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.baul import BaulState, CATEGORIAS_BAUL
+from minty.state.baul import BaulState, CATEGORIAS_BAUL
 
 
 def _form() -> rx.Component:

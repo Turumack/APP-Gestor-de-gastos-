@@ -1,21 +1,21 @@
 """Entrypoint de Reflex — registra la app y todas sus rutas."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro import db as _db  # noqa: F401  (crea tablas SQLite al importar)
-from cuentas_pro.pages import (
+from minty import theme as T
+from minty import db as _db  # noqa: F401  (crea tablas SQLite al importar)
+from minty.pages import (
     home_page, resumen_page, ingresos_page,
     gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
     presupuestos_page, configuracion_page,
 )
-from cuentas_pro.state.resumen import ResumenState
-from cuentas_pro.state.ingresos import IngresosState
-from cuentas_pro.state.gastos import GastosState
-from cuentas_pro.state.compras import ComprasState
-from cuentas_pro.state.cajas import CajasState
-from cuentas_pro.state.inversiones import InversionesState
-from cuentas_pro.state.baul import BaulState
-from cuentas_pro.state.presupuestos import PresupuestosState
-from cuentas_pro.state.config import ConfigState
+from minty.state.resumen import ResumenState
+from minty.state.ingresos import IngresosState
+from minty.state.gastos import GastosState
+from minty.state.compras import ComprasState
+from minty.state.cajas import CajasState
+from minty.state.inversiones import InversionesState
+from minty.state.baul import BaulState
+from minty.state.presupuestos import PresupuestosState
+from minty.state.config import ConfigState
 
 
 app = rx.App(
@@ -34,23 +34,23 @@ app = rx.App(
     ],
 )
 
-app.add_page(home_page,        route="/",            title="Minty",
+app.add_page(home_page,        route="/",            title="MINTY",
              on_load=ResumenState.load)
-app.add_page(resumen_page,     route="/resumen",     title="Resumen · Minty",
+app.add_page(resumen_page,     route="/resumen",     title="Resumen · MINTY",
              on_load=ResumenState.load)
-app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · Minty",
+app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · MINTY",
              on_load=IngresosState.load)
-app.add_page(gastos_page,      route="/gastos",      title="Gastos · Minty",
+app.add_page(gastos_page,      route="/gastos",      title="Gastos · MINTY",
              on_load=GastosState.load)
-app.add_page(compras_page,     route="/compras",     title="Listas de compra · Minty",
+app.add_page(compras_page,     route="/compras",     title="Listas de compra · MINTY",
              on_load=ComprasState.load)
-app.add_page(cajas_page,       route="/cajas",       title="Cajas · Minty",
+app.add_page(cajas_page,       route="/cajas",       title="Cajas · MINTY",
              on_load=CajasState.load)
-app.add_page(inversiones_page, route="/inversiones", title="Inversiones · Minty",
+app.add_page(inversiones_page, route="/inversiones", title="Inversiones · MINTY",
              on_load=InversionesState.load)
-app.add_page(baul_page,        route="/baul",        title="Baúl · Minty",
+app.add_page(baul_page,        route="/baul",        title="Baúl · MINTY",
              on_load=BaulState.load)
-app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · Minty",
+app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · MINTY",
              on_load=PresupuestosState.load)
-app.add_page(configuracion_page, route="/configuracion", title="Configuración · Minty",
+app.add_page(configuracion_page, route="/configuracion", title="Configuración · MINTY",
              on_load=ConfigState.load)

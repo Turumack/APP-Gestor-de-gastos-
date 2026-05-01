@@ -4,8 +4,8 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import BaulDoc
-from cuentas_pro.state._autosetters import auto_setters
+from minty.models import BaulDoc
+from minty.state._autosetters import auto_setters
 
 
 CATEGORIAS_BAUL = ["General", "Contratos", "Soportes", "Facturas",

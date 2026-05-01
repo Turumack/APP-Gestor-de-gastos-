@@ -1,11 +1,11 @@
 """Página de Configuración: backups manuales, restore, mantenimiento."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     primary_button, ghost_button,
 )
-from cuentas_pro.state.config import ConfigState
+from minty.state.config import ConfigState
 
 
 def _msg() -> rx.Component:
@@ -129,7 +129,7 @@ def _seccion_subir() -> rx.Component:
             ),
             rx.text(
                 "Sube un .zip generado por esta app. Se validará que contenga "
-                "'cuentas.db' antes de guardarlo en la lista de backups.",
+                "'minty.db' antes de guardarlo en la lista de backups.",
                 size="2", color=T.TEXT_MUTED,
             ),
             rx.upload(

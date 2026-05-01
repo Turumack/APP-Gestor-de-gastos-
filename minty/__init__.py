@@ -1,4 +1,4 @@
 """Minty — finanzas personales en Reflex.""" 
-from cuentas_pro.app import app
+from minty.app import app
 
 __all__ = ["app"]

@@ -1,4 +1,4 @@
-"""Tests unitarios para cuentas_pro.finance.
+"""Tests unitarios para minty.finance.
 
 Ejecutar con::
 
@@ -6,7 +6,7 @@ Ejecutar con::
 """
 import pytest
 
-from cuentas_pro.finance import (
+from minty.finance import (
     PCT_DEDUCCION_BASE,
     PCT_GMF,
     RECARGOS,

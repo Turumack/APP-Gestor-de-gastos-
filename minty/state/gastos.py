@@ -7,11 +7,11 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import Gasto, Caja, ShoppingGroup, ShoppingItem
-from cuentas_pro.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA, MEDIOS_PAGO, MONEDAS
-from cuentas_pro.services import obtener_trm, obtener_tasa_a_cop
-from cuentas_pro.state.periodo import PeriodoState
-from cuentas_pro.state._autosetters import auto_setters
+from minty.models import Gasto, Caja, ShoppingGroup, ShoppingItem
+from minty.finance import CATEGORIAS_GASTO, COLOR_CATEGORIA, MEDIOS_PAGO, MONEDAS
+from minty.services import obtener_trm, obtener_tasa_a_cop
+from minty.state.periodo import PeriodoState
+from minty.state._autosetters import auto_setters
 
 
 def _avanzar_meses(f: date, n: int) -> date:
@@ -840,7 +840,7 @@ class GastosState(rx.State):
             )
             for g in gastos
         ]
-        from cuentas_pro.services import filas_a_csv
+        from minty.services import filas_a_csv
 
         data = filas_a_csv(headers, filas)
         nombre = f"gastos-{per.anio:04d}-{per.mes:02d}.csv"

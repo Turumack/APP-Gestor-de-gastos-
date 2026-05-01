@@ -5,8 +5,8 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import CDT
-from cuentas_pro.state._autosetters import auto_setters
+from minty.models import CDT
+from minty.state._autosetters import auto_setters
 
 
 class CDTRow(BaseModel):

@@ -1,6 +1,6 @@
 """Inputs estilizados reutilizables (dark theme)."""
 import reflex as rx
-from cuentas_pro import theme as T
+from minty import theme as T
 
 
 def field_label(text: str) -> rx.Component:

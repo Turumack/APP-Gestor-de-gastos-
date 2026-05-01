@@ -1,9 +1,9 @@
 """P\u00e1gina Resumen / Dashboard."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import main_layout, glass_card, page_title, metric_card
-from cuentas_pro.state.resumen import ResumenState
-from cuentas_pro.state import PeriodoState
+from minty import theme as T
+from minty.components import main_layout, glass_card, page_title, metric_card
+from minty.state.resumen import ResumenState
+from minty.state import PeriodoState
 
 
 def _metric_grid() -> rx.Component:

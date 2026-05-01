@@ -9,10 +9,10 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import ShoppingGroup, ShoppingItem
-from cuentas_pro.finance import CATEGORIAS_GASTO
-from cuentas_pro.services import auto_rellenar_desde_url
-from cuentas_pro.state._autosetters import auto_setters
+from minty.models import ShoppingGroup, ShoppingItem
+from minty.finance import CATEGORIAS_GASTO
+from minty.services import auto_rellenar_desde_url
+from minty.state._autosetters import auto_setters
 
 log = logging.getLogger(__name__)
 

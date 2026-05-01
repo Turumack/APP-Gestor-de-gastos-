@@ -1,7 +1,7 @@
 """Sidebar lateral con navegación tipo app moderna."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components.period_selector import period_selector
+from minty import theme as T
+from minty.components.period_selector import period_selector
 
 
 # ── Item individual ─────────────────────────────────────

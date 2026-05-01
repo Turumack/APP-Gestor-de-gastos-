@@ -1,7 +1,7 @@
 """State base con el período (mes/año) compartido por todas las páginas."""
 from datetime import date
 import reflex as rx
-from cuentas_pro.finance import MESES_NOMBRE
+from minty.finance import MESES_NOMBRE
 
 
 def _month_bounds(mes: int, anio: int) -> tuple[date, date]:
@@ -63,11 +63,11 @@ class PeriodoState(rx.State):
 
     async def _broadcast(self):
         """Dispara recarga en todos los states que dependen del período."""
-        from cuentas_pro.state.ingresos import IngresosState
-        from cuentas_pro.state.gastos import GastosState
-        from cuentas_pro.state.resumen import ResumenState
-        from cuentas_pro.state.cajas import CajasState
-        from cuentas_pro.state.presupuestos import PresupuestosState
+        from minty.state.ingresos import IngresosState
+        from minty.state.gastos import GastosState
+        from minty.state.resumen import ResumenState
+        from minty.state.cajas import CajasState
+        from minty.state.presupuestos import PresupuestosState
 
         ing = await self.get_state(IngresosState)
         await ing.load()

@@ -1,6 +1,6 @@
 """Primitivos UI reutilizables: cards, botones, headers."""
 import reflex as rx
-from cuentas_pro import theme as T
+from minty import theme as T
 
 
 def glass_card(*children, **props) -> rx.Component:

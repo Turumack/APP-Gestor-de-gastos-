@@ -1,4 +1,4 @@
-# Cuentas PRO — Guía de arquitectura y soporte
+# MINTY — Guía de arquitectura y soporte
 
 Documento de referencia para entender la app, qué tecnología usa y dónde tocar para
 agregar o modificar funcionalidad.
@@ -414,7 +414,7 @@ rx.image(
   [Lucide](https://lucide.dev) (ej. `"piggy-bank"`, `"sparkles"`, `"coins"`).
 - Gradiente: edita `GRADIENT_BRAND` en [cuentas_pro/theme.py](cuentas_pro/theme.py).
 
-**Para cambiar el texto "Cuentas PRO":**
+**Para cambiar el texto "MINTY":**
 Está justo debajo del logo en el mismo archivo (`rx.heading("Cuentas", ...)` y `rx.text("PRO", ...)`).
 
 ### 14.5 Tipografía

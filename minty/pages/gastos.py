@@ -1,14 +1,14 @@
 """P\u00e1gina Gastos con calendario visual."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title, pill,
     text_field, number_field, date_field, select_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.gastos import GastosState
-from cuentas_pro.state import PeriodoState
-from cuentas_pro.finance import CATEGORIAS_GASTO, MEDIOS_PAGO, MONEDAS
+from minty.state.gastos import GastosState
+from minty.state import PeriodoState
+from minty.finance import CATEGORIAS_GASTO, MEDIOS_PAGO, MONEDAS
 
 
 DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]

@@ -5,14 +5,14 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from cuentas_pro.models import Caja, Movimiento, Gasto, Ingreso
-from cuentas_pro.finance import (
+from minty.models import Caja, Movimiento, Gasto, Ingreso
+from minty.finance import (
     TIPOS_CAJA,
     TIPO_CAJA_LABEL,
     calcular_4x1000,
     calculate_net_income,
 )
-from cuentas_pro.state._autosetters import auto_setters
+from minty.state._autosetters import auto_setters
 
 
 class CajaRow(BaseModel):
@@ -87,7 +87,7 @@ class CajasState(rx.State):
 
     @rx.event
     async def load(self):
-        from cuentas_pro.state.periodo import PeriodoState
+        from minty.state.periodo import PeriodoState
 
         per = await self.get_state(PeriodoState)
         ini = date.fromisoformat(per.fecha_inicio)
@@ -316,7 +316,7 @@ class CajasState(rx.State):
     @rx.event
     async def auto_transferir_cobertura(self, caja_destino_id: int):
         """Aplica una transferencia automática para cubrir faltante usando fecha del ingreso."""
-        from cuentas_pro.state.periodo import PeriodoState
+        from minty.state.periodo import PeriodoState
 
         destino = next((r for r in self.rows if r.id == caja_destino_id), None)
         if not destino:

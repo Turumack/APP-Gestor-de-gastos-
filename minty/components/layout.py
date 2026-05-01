@@ -1,7 +1,7 @@
 """Layout principal: sidebar + contenido."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components.sidebar import sidebar
+from minty import theme as T
+from minty.components.sidebar import sidebar
 
 
 def main_layout(*content) -> rx.Component:

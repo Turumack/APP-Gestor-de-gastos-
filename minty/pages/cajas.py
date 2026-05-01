@@ -1,13 +1,13 @@
 """Página Cajas: gestión de cuentas, tarjetas y efectivo."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     text_field, number_field, date_field, select_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.cajas import CajasState
-from cuentas_pro.finance import TIPOS_CAJA, TIPO_CAJA_LABEL
+from minty.state.cajas import CajasState
+from minty.finance import TIPOS_CAJA, TIPO_CAJA_LABEL
 
 
 COLORES_DISPONIBLES = ["#a78bfa", "#f472b6", "#34d399", "#fbbf24",

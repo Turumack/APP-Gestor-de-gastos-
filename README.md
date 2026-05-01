@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/axium-logo-full.svg" alt="Axium / Cuentas PRO" width="320" />
+<img src="assets/axium-logo-full.svg" alt="MINTY" width="320" />
 
-# Cuentas PRO
+# MINTY
 
 **Gestor personal de finanzas, hecho con [Reflex](https://reflex.dev) puro Python.**
 Controla gastos, ingresos, cajas, inversiones y compras recurrentes desde una sola app local — sin nube, sin telemetría, sin ataduras.
@@ -20,7 +20,7 @@ Controla gastos, ingresos, cajas, inversiones y compras recurrentes desde una so
 
 ## ✨ ¿Qué es esto?
 
-**Cuentas PRO** es una app full-stack escrita 100 % en Python que te permite llevar tu contabilidad personal con la potencia de una hoja de cálculo y la comodidad de una interfaz moderna.
+**MINTY** es una app full-stack escrita 100 % en Python que te permite llevar tu contabilidad personal con la potencia de una hoja de cálculo y la comodidad de una interfaz moderna.
 
 A diferencia de un Excel, tiene **estado reactivo**, formularios, validación, reportes por periodo y soporte para compras a cuotas, recurrencias avanzadas y conversiones de divisas en vivo. Todo corriendo en tu máquina, con SQLite y sin enviar ni un byte a la nube.
 
@@ -114,7 +114,7 @@ La app abre en:
 - **Frontend:** http://localhost:3000
 - **Backend:** http://localhost:8000
 
-> 💡 La base de datos SQLite se crea automáticamente en `data/cuentas.db` la primera vez que la lanzas. Está en `.gitignore`, así que es 100 % tuya.
+> 💡 La base de datos SQLite se crea automáticamente en `data/minty.db` la primera vez que la lanzas. Está en `.gitignore`, así que es 100 % tuya.
 
 ---
 
@@ -127,7 +127,7 @@ APP Gestor de Gastos/
 ├── 📄 ARQUITECTURA.md          # Guía técnica detallada
 ├── 📁 assets/                  # Logos, iconos, fuentes
 ├── 📁 data/                    # SQLite local (gitignored)
-└── 📁 cuentas_pro/             # App principal
+└── 📁 minty/                  # App principal
     ├── app.py                  # Entry point + montaje de páginas
     ├── models.py               # SQLModel (Gasto, Ingreso, Caja, ...)
     ├── db.py                   # Conexión + migraciones ligeras
@@ -187,7 +187,7 @@ git push origin feat/mi-feature
 
 - Esta app **no envía datos a ningún servidor externo** por defecto.
 - La telemetría de Reflex está **desactivada** (`telemetry_enabled=False` en `rxconfig.py`).
-- Tu base de datos vive solo en `data/cuentas.db` (gitignored).
+- Tu base de datos vive solo en `data/minty.db` (gitignored).
 - Si configuras Supabase en `.env`, **ese archivo está gitignored**.
 
 ---

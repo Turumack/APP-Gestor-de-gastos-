@@ -1,12 +1,12 @@
 """Página para gestionar grupos e ítems de listas de compra."""
 import reflex as rx
-from cuentas_pro import theme as T
-from cuentas_pro.components import (
+from minty import theme as T
+from minty.components import (
     main_layout, glass_card, page_title,
     text_field, number_field, select_field,
     primary_button, ghost_button, field_label,
 )
-from cuentas_pro.state.compras import ComprasState
+from minty.state.compras import ComprasState
 
 _UPLOAD_IMG_ID = "compras_upload_imagen"
 

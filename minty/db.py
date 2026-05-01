@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, create_engine, text
 from rxconfig import config
 
 # Importar modelos para que se registren en SQLModel.metadata
-from cuentas_pro import models  # noqa: F401
+from minty import models  # noqa: F401
 
 
 # Columnas añadidas después de la creación inicial.
@@ -91,7 +91,7 @@ def ensure_db():
 
     # Backup automático (silencioso si falla, con cooldown interno).
     try:
-        from cuentas_pro.services.backup import hacer_backup
+        from minty.services.backup import hacer_backup
         hacer_backup()
     except Exception:
         pass
