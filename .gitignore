@@ -63,3 +63,6 @@ logs/
 # ─── Alembic (no usado, pero por si acaso se genera) ────
 alembic/
 alembic.ini
+
+# Otras cosas que podrían ser útiles ignorar
+ARQUITECTURA.md
