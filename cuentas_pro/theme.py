@@ -24,6 +24,9 @@ AMBER = "#fbbf24"
 GREEN = "#34d399"
 BLUE = "#60a5fa"
 RED = "#f87171"
+CHERRY = "#ff007f"
+PEARL = "#e5e5e5"
+QUANTUM = "#8a2be2"
 
 # Gradientes de marca
 GRADIENT_BRAND = f"linear-gradient(135deg, {VIOLET} 0%, {PINK} 100%)"

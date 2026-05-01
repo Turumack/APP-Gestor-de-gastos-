@@ -1,0 +1,10 @@
+<svg width="240" height="60" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </linearGradient>
+  </defs>
+  <text x="10" y="55" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="url(#textGradient)" letter-spacing="2">AXIUM</text>
+  <text x="12" y="80" font-family="Arial, sans-serif" font-size="18" font-weight="300" fill="#a855f7" letter-spacing="3">TECH &amp; SEC</text>
+</svg>

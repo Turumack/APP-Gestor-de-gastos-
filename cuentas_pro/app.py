@@ -29,6 +29,9 @@ app = rx.App(
     stylesheets=[
         "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap",
     ],
+    head_components=[
+        rx.el.link(rel="icon", type="image/svg+xml", href="/axium_icon.svg"),
+    ],
 )
 
 app.add_page(home_page,        route="/",            title="Minty",

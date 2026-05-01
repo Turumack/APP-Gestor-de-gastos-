@@ -38,29 +38,24 @@ def sidebar() -> rx.Component:
         rx.vstack(
             # ── Logo ──
             rx.hstack(
-                rx.box(
-                    rx.icon("wallet", size=20, color="white"),
-                    width="38px",
-                    height="38px",
-                    border_radius="12px",
-                    background=T.GRADIENT_BRAND,
-                    display="flex",
-                    align_items="center",
-                    justify_content="center",
-                    box_shadow=T.SHADOW_GLOW,
+                rx.image(
+                    src="/axium_icon.svg",
+                    width="70px", 
+                    height="70px",
+                    border_radius="1px",
                 ),
                 rx.vstack(
                     rx.heading(
-                        "Cuentas",
+                        "MINTY",
                         size="4",
                         weight="bold",
-                        font_family=T.FONT_HEAD,
+                       font_family=T.FONT_HEAD,
                         background=T.GRADIENT_BRAND,
                         background_clip="text",
                         color="transparent",
                         line_height="1",
                     ),
-                    rx.text("PRO", size="1", color=T.TEXT_DIM, weight="medium", letter_spacing="0.1em"),
+                    rx.text("Cuentas seguras y privadas", size="1", color=T.TEXT_DIM, weight="medium", letter_spacing="0.1em"),
                     spacing="1",
                     align="start",
                 ),

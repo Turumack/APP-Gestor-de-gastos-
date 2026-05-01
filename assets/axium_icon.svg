@@ -1,0 +1,61 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="chipGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </linearGradient>
+    <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#a855f7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0099cc" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="40" y="40" width="120" height="120" rx="8" stroke="url(#chipGradient)" stroke-width="3" fill="none" filter="url(#glow)"/>
+  <line x1="75" y1="30" x2="75" y2="40" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="100" y1="25" x2="100" y2="40" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="125" y1="30" x2="125" y2="40" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="75" y1="160" x2="75" y2="170" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="100" y1="160" x2="100" y2="175" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="125" y1="160" x2="125" y2="170" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="30" y1="75" x2="40" y2="75" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="25" y1="100" x2="40" y2="100" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="30" y1="125" x2="40" y2="125" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="160" y1="75" x2="170" y2="75" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="160" y1="100" x2="175" y2="100" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="160" y1="125" x2="170" y2="125" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <path d="M100 60 L130 77.5 L130 112.5 L100 130 L70 112.5 L70 77.5 Z" fill="url(#coreGradient)" opacity="0.2"/>
+  <path d="M100 60 L130 77.5 L130 112.5 L100 130 L70 112.5 L70 77.5 Z" stroke="#a855f7" stroke-width="2.5" fill="none"/>
+  <circle cx="100" cy="95" r="6" fill="#a855f7" filter="url(#glow)"/>
+  <circle cx="100" cy="95" r="10" stroke="#a855f7" stroke-width="1.5" fill="none" opacity="0.3"/>
+  <circle cx="100" cy="70" r="4" fill="#a855f7"/>
+  <circle cx="85" cy="82" r="4" fill="#a855f7"/>
+  <circle cx="115" cy="82" r="4" fill="#a855f7"/>
+  <circle cx="85" cy="108" r="4" fill="#a855f7"/>
+  <circle cx="115" cy="108" r="4" fill="#a855f7"/>
+  <circle cx="100" cy="120" r="4" fill="#a855f7"/>
+  <line x1="100" y1="95" x2="100" y2="70" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="95" x2="85" y2="82" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="95" x2="115" y2="82" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="95" x2="85" y2="108" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="95" x2="115" y2="108" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="95" x2="100" y2="120" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <path d="M100 70 L85 82" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M100 70 L115 82" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M85 82 L85 108" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M115 82 L115 108" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M85 108 L100 120" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M115 108 L100 120" stroke="#a855f7" stroke-width="1.5" opacity="0.3"/>
+  <path d="M48 48 L55 48 L55 55" stroke="#a855f7" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+  <path d="M152 48 L145 48 L145 55" stroke="#a855f7" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+  <path d="M48 152 L55 152 L55 145" stroke="#a855f7" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+  <path d="M152 152 L145 152 L145 145" stroke="#a855f7" stroke-width="1.5" opacity="0.4" stroke-linecap="round"/>
+  <rect x="50" y="95" width="3" height="10" fill="#a855f7" opacity="0.5"/>
+  <rect x="147" y="95" width="3" height="10" fill="#a855f7" opacity="0.5"/>
+</svg>

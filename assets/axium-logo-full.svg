@@ -1,0 +1,57 @@
+<svg width="250" height="70" viewBox="0 0 500 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </linearGradient>
+    <linearGradient id="chipGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#0099cc"/>
+    </linearGradient>
+    <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#a855f7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0099cc" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(8, 20)">
+    <rect x="20" y="20" width="60" height="60" rx="4" stroke="url(#chipGradient)" stroke-width="2" fill="none" filter="url(#glow)"/>
+    <line x1="37.5" y1="15" x2="37.5" y2="20" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="12" x2="50" y2="20" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="62.5" y1="15" x2="62.5" y2="20" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="37.5" y1="80" x2="37.5" y2="85" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="50" y1="80" x2="50" y2="88" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="62.5" y1="80" x2="62.5" y2="85" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="15" y1="37.5" x2="20" y2="37.5" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12" y1="50" x2="20" y2="50" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="15" y1="62.5" x2="20" y2="62.5" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="80" y1="37.5" x2="85" y2="37.5" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="80" y1="50" x2="88" y2="50" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="80" y1="62.5" x2="85" y2="62.5" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <path d="M50 30 L65 38.75 L65 56.25 L50 65 L35 56.25 L35 38.75 Z" fill="url(#coreGradient)" opacity="0.2"/>
+    <path d="M50 30 L65 38.75 L65 56.25 L50 65 L35 56.25 L35 38.75 Z" stroke="#a855f7" stroke-width="1.5" fill="none"/>
+    <circle cx="50" cy="47.5" r="3" fill="#a855f7" filter="url(#glow)"/>
+    <circle cx="50" cy="35" r="2" fill="#a855f7"/>
+    <circle cx="42.5" cy="41" r="2" fill="#a855f7"/>
+    <circle cx="57.5" cy="41" r="2" fill="#a855f7"/>
+    <circle cx="42.5" cy="54" r="2" fill="#a855f7"/>
+    <circle cx="57.5" cy="54" r="2" fill="#a855f7"/>
+    <circle cx="50" cy="60" r="2" fill="#a855f7"/>
+    <line x1="50" y1="47.5" x2="50" y2="35" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+    <line x1="50" y1="47.5" x2="42.5" y2="41" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+    <line x1="50" y1="47.5" x2="57.5" y2="41" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+    <line x1="50" y1="47.5" x2="42.5" y2="54" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+    <line x1="50" y1="47.5" x2="57.5" y2="54" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+    <line x1="50" y1="47.5" x2="50" y2="60" stroke="#a855f7" stroke-width="1.2" opacity="0.5"/>
+  </g>
+  <text x="115" y="70" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="url(#textGradient)" letter-spacing="2">AXIUM</text>
+  <text x="117" y="95" font-family="Arial, sans-serif" font-size="18" font-weight="300" fill="#a855f7" letter-spacing="3">TECH &amp; SEC</text>
+  <line x1="115" y1="102" x2="310" y2="102" stroke="#a855f7" stroke-width="1" opacity="0.4"/>
+</svg>
