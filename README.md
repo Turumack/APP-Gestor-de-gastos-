@@ -10,7 +10,7 @@ Controla gastos, ingresos, cajas, inversiones y compras recurrentes desde una so
 [![Python](https://img.shields.io/badge/Python-3.14+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Reflex](https://img.shields.io/badge/Reflex-0.9+-5646ED?style=for-the-badge&logo=reflex&logoColor=white)](https://reflex.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-Local-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](#-licencia)
+[![License](https://img.shields.io/badge/License-PolyForm_NC_1.0.0-blueviolet?style=for-the-badge)](#-licencia)
 
 [Funcionalidades](#-funcionalidades) • [Instalación](#-instalación) • [Estructura](#-estructura-del-proyecto) • [Arquitectura](ARQUITECTURA.md) • [Roadmap](#-roadmap)
 
@@ -194,7 +194,14 @@ git push origin feat/mi-feature
 
 ## 📜 Licencia
 
-Distribuido bajo licencia **MIT**. Ver [LICENSE](LICENSE) para más detalles.
+Distribuido bajo licencia **[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)**. Ver [LICENSE](LICENSE) para el texto completo.
+
+**En resumen:**
+- ✅ Puedes **usarla, modificarla y compartirla libremente** para fines personales, educativos, de investigación o sin fines de lucro.
+- ✅ Puedes contribuir, hacer forks y crear trabajos derivados.
+- ❌ **No puedes** usarla con fines comerciales (vender, ofrecer como SaaS de pago, integrarla en un producto/servicio comercial) sin permiso expreso.
+
+Para licencias comerciales, contacta al autor.
 
 ---
 
