@@ -124,7 +124,6 @@ La app abre en:
 APP Gestor de Gastos/
 ├── 📄 rxconfig.py              # Configuración de Reflex (puertos, BD, plugins)
 ├── 📄 requirements.txt         # Dependencias Python
-├── 📄 ARQUITECTURA.md          # Guía técnica detallada
 ├── 📁 assets/                  # Logos, iconos, fuentes
 ├── 📁 data/                    # SQLite local (gitignored)
 └── 📁 minty/                  # App principal
@@ -137,8 +136,6 @@ APP Gestor de Gastos/
     ├── 📁 state/               # Estado reactivo por dominio
     └── 📁 services/            # Integraciones externas (TRM, scraping)
 ```
-
-> 📖 Para entender cómo encaja todo, ver **[ARQUITECTURA.md](ARQUITECTURA.md)** — incluye glosario, recetas y guía para principiantes.
 
 ---
 
