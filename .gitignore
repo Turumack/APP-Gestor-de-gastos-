@@ -64,5 +64,5 @@ logs/
 alembic/
 alembic.ini
 
-# Otras cosas que podrían ser útiles ignorar
+# ─── Otros ─────────────────────────────────────────────
 ARQUITECTURA.md
