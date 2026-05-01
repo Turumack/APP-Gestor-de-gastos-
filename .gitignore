@@ -1,27 +1,63 @@
+# ─── Reflex / build ─────────────────────────────────────
+.web/
+.states/
 assets/external/
-.web
-.states
+
+# ─── Python ─────────────────────────────────────────────
+__pycache__/
 *.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Entornos virtuales
 venv/
 env/
 .venv/
+.env/
 
-# Archivos de caché de Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Variables de entorno y secretos (¡MUY IMPORTANTE!)
+# ─── Secretos y configuración local ─────────────────────
+# (¡MUY IMPORTANTE! contienen claves de Supabase, etc.)
 .env
 .env.local
+.env.*.local
+*.pem
+*.key
 
-# Archivos del sistema operativo
+# ─── Datos del usuario ──────────────────────────────────
+# Base de datos SQLite con tus gastos / ingresos / cajas reales
+data/
+*.sqlite3
+*.sqlite
+*.db
+*.db-journal
+
+# Archivos subidos por el usuario (fotos de productos, etc.)
+uploaded_files/
+
+# Backups manuales (zip con cuentas.db)
+backup-*.zip
+*.backup
+
+# ─── Sistema operativo ──────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Bases de datos locales (SQLite)
-*.sqlite3
-*.db
-data/
+# ─── IDEs / editores ────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Logs ───────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Alembic (no usado, pero por si acaso se genera) ────
+alembic/
+alembic.ini
