@@ -58,8 +58,8 @@ A diferencia de un Excel, tiene **estado reactivo**, formularios, validación, r
 
 ## 🖼️ Capturas
 
-(assets/screenshots/home.png)
-(assets/screenshots/gastos.png)
+[](assets/screenshots/home.png)
+[](assets/screenshots/gastos.png)
 
 ---
 
