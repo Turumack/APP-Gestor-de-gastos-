@@ -8,8 +8,8 @@
     }
     reverse_proxy @backend localhost:8000
 
-    # Frontend estático compilado por `reflex export`
-    root * /app/.web/_static
+    # Frontend estático compilado por `reflex export` (Vite/React Router)
+    root * /app/.web/build/client
     try_files {path} /index.html
     file_server
 }

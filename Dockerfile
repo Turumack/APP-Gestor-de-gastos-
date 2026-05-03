@@ -25,6 +25,11 @@ COPY . .
 RUN mkdir -p /app/data
 # Inicializa Reflex (descarga deps de Node) y exporta el frontend estático.
 RUN reflex init --loglevel debug && reflex export --frontend-only --no-zip --loglevel debug
+# Diagnóstico: lista qué generó el export para saber dónde quedó el frontend.
+RUN echo "=== Contenido de /app/.web ===" && ls -la /app/.web && \
+    echo "=== /app/.web/build ===" && ls -la /app/.web/build 2>/dev/null || true && \
+    echo "=== /app/.web/build/client ===" && ls -la /app/.web/build/client 2>/dev/null || true && \
+    echo "=== /app/.web/_static ===" && ls -la /app/.web/_static 2>/dev/null || true
 
 
 # ── Etapa 2: runtime (Caddy + Python backend) ────────────────────────────────
