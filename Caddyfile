@@ -1,15 +1,20 @@
 # Reverse proxy: sirve el frontend estático y enruta /_event al backend Reflex.
+# IMPORTANTE: Usamos `handle` explícitos. En Caddy 2 el orden automático
+# pone `try_files` (rewrite) ANTES que `reverse_proxy`, lo que reescribe
+# /_event/?token=... → /index.html y rompe la conexión WebSocket.
 :{$PORT} {
     encode gzip
 
-    # WebSocket / API de Reflex
-    @backend {
-        path /_event* /ping /_upload*
+    # 1) Backend Reflex (WebSocket en /_event, ping y uploads)
+    @backend path /_event* /ping /_upload*
+    handle @backend {
+        reverse_proxy localhost:8000
     }
-    reverse_proxy @backend localhost:8000
 
-    # Frontend estático compilado por `reflex export` (Vite/React Router)
-    root * /app/.web/build/client
-    try_files {path} /index.html
-    file_server
+    # 2) Frontend estático (Vite/React Router) con fallback SPA
+    handle {
+        root * /app/.web/build/client
+        try_files {path} {path}.html {path}/index.html /index.html
+        file_server
+    }
 }
