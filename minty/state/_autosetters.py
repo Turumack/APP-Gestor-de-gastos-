@@ -55,15 +55,24 @@ def auto_setters(cls):
 
         target_type = hints.get(name)
 
-        def _make(_n, _tt):
-            def _setter(self, value: str):
+        # Anotaci\u00f3n del par\u00e1metro `value` del setter:
+        # - bool   -> bool (checkbox/switch env\u00edan bool)
+        # - int/float -> str (rx.input env\u00eda str; _coerce convierte)
+        # - resto  -> str
+        if target_type is bool:
+            param_type = bool
+        else:
+            param_type = str
+
+        def _make(_n, _tt, _pt):
+            def _setter(self, value):
                 setattr(self, _n, _coerce(value, _tt))
             _setter.__name__ = f"set_{_n}"
             _setter.__qualname__ = f"{cls.__qualname__}.set_{_n}"
-            _setter.__annotations__ = {"value": str, "return": None}
+            _setter.__annotations__ = {"value": _pt, "return": None}
             return _setter
 
-        fn = _make(name, target_type)
+        fn = _make(name, target_type, param_type)
         handler = cls._create_event_handler(fn)
         cls.event_handlers[setter_name] = handler
         setattr(cls, setter_name, handler)
