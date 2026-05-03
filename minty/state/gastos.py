@@ -1,6 +1,6 @@
 """State de Gastos."""
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from calendar import monthrange
 from typing import Optional
 import reflex as rx
@@ -444,10 +444,59 @@ class GastosState(rx.State):
         self.form_moneda = value
         # Para cualquier moneda no-COP intenta obtener tasa automáticamente.
         if value != "COP" and self.form_trm <= 0:
+            # Si la caja seleccionada es una TC con TRM propio configurado,
+            # úsalo en vez de la tasa de mercado (los bancos cobran con su
+            # propio TRM, no con el oficial).
+            trm_tc = self._trm_de_caja_tc(self.form_caja_id)
+            if trm_tc > 0:
+                self.form_trm = trm_tc
+                self._recalcular_monto_cop()
+                return
             tasa = obtener_tasa_a_cop(value, self.form_fecha)
             if tasa > 0:
                 self.form_trm = tasa
                 self._recalcular_monto_cop()
+
+    @rx.event
+    def set_form_caja_id(self, value):
+        try:
+            cid = int(value) if value not in ("", None) else 0
+        except (TypeError, ValueError):
+            cid = 0
+        self.form_caja_id = cid
+        # Si la caja es una TC con TRM propio y la moneda actual es no-COP,
+        # aplica el TRM del banco automáticamente.
+        if self.form_moneda != "COP":
+            trm_tc = self._trm_de_caja_tc(cid)
+            if trm_tc > 0:
+                self.form_trm = trm_tc
+                self._recalcular_monto_cop()
+
+    @rx.event
+    def aplicar_trm_tc_form(self):
+        """Forza el uso del TRM propio de la TC seleccionada (botón manual)."""
+        if self.form_caja_id <= 0:
+            self.form_msg = "⚠ Selecciona primero la caja TC."
+            return
+        trm_tc = self._trm_de_caja_tc(self.form_caja_id)
+        if trm_tc <= 0:
+            self.form_msg = "⚠ La caja seleccionada no es TC o no tiene TRM propio configurado."
+            return
+        self.form_trm = trm_tc
+        self._recalcular_monto_cop()
+        self.form_msg = f"✓ TRM TC aplicado: ${trm_tc:,.2f}"
+
+    def _trm_de_caja_tc(self, caja_id: int) -> float:
+        if not caja_id or caja_id <= 0:
+            return 0.0
+        try:
+            with rx.session() as s:
+                c = s.get(Caja, caja_id)
+                if not c or c.tipo != "tarjeta_credito":
+                    return 0.0
+                return float(c.trm_tc or 0.0)
+        except Exception:
+            return 0.0
 
     @rx.event
     def refrescar_trm(self):
@@ -791,6 +840,58 @@ class GastosState(rx.State):
                         claves_existentes.add(clave)
                     f = _avanzar_periodo(f, unidad, intervalo)
                     it += 1
+
+            # ── Cuotas de manejo de tarjetas de crédito ──
+            # Solo crear si la fecha del cobro YA pasó (no anticipar cuotas
+            # futuras: la TC es una cuenta global y duplicaría/inflaría deuda).
+            hoy_real = date.today()
+            tcs = s.exec(
+                sqlmodel.select(Caja).where(
+                    Caja.tipo == "tarjeta_credito",
+                    Caja.activa == True,  # noqa: E712
+                )
+            ).all()
+            cuotas_creadas = 0
+            for c in tcs:
+                cuota = float(c.cuota_manejo or 0)
+                if cuota <= 0:
+                    continue
+                dia_obj = max(1, min(31, c.dia_cobro_cuota or 1))
+                # Fecha del cobro dentro del periodo destino (cap a fin de mes).
+                try:
+                    fecha_cuota = ini_dest.replace(day=dia_obj)
+                except ValueError:
+                    next_m = ini_dest.replace(day=28) + timedelta(days=4)
+                    fecha_cuota = (next_m.replace(day=1)) - timedelta(days=1)
+                if not (ini_dest <= fecha_cuota < fin_dest):
+                    continue
+                if fecha_cuota > hoy_real:
+                    # No anticipar cobros futuros.
+                    continue
+                desc = f"Cuota de manejo {c.nombre}"
+                clave = (desc.strip().lower(), round(cuota, 2),
+                         fecha_cuota.isoformat())
+                if clave in claves_existentes:
+                    omitidos += 1
+                    continue
+                s.add(Gasto(
+                    fecha=fecha_cuota,
+                    descripcion=desc,
+                    categoria="Servicios",
+                    monto=cuota,
+                    moneda="COP",
+                    monto_original=cuota,
+                    medio_pago="Tarjeta de crédito",
+                    caja_id=c.id,
+                    recurrente=False,
+                    recurrencia_unidad="",
+                    recurrencia_intervalo=1,
+                    notas="[AUTO] Cuota de manejo mensual",
+                ))
+                claves_existentes.add(clave)
+                cuotas_creadas += 1
+            creados += cuotas_creadas
+
             s.commit()
 
         if creados == 0 and omitidos == 0:

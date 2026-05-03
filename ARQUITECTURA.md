@@ -235,7 +235,7 @@ Tablas principales (todas en `models.py`):
 
 | Tabla | Propósito |
 |---|---|
-| `Caja` | Cuenta donde está el dinero (efectivo, banco, ahorros, tarjeta). |
+| `Caja` | Cuenta donde está el dinero (efectivo, banco, ahorros, tarjeta de crédito, tarjeta débito). Las TC tienen campos extra: `cupo_total_cop`, `interes_mensual_compras`, `interes_ea_compras`, `interes_mensual_avances`, `interes_ea_avances`, `cuota_manejo`, `dia_cobro_cuota`, `dia_corte`, `usa_dos_cortes`, `dia_corte_2`, `dia_pago`, `trm_tc` (TRM propio del banco), `ultimo_cobro_cuota` (idempotencia mensual). |
 | `Ingreso` | Movimiento positivo. Soporta recurrencia. |
 | `Gasto` | Movimiento negativo. Soporta cuotas (`cuotas_total`, `cuota_num`, `compra_id`) y recurrencia (`recurrencia_unidad`, `recurrencia_intervalo`). |
 | `ShoppingGroup` | Grupo de items en lista de compra (Mercado, Casa, etc.). |
@@ -274,6 +274,15 @@ Al iniciar, `db.py` recorre la lista y ejecuta `ALTER TABLE ADD COLUMN` solo si 
 ---
 
 ## 8. Recetas comunes
+
+### 8.0 Tarjetas de crédito
+
+- **Modelado**: una TC es una `Caja` con `tipo="tarjeta_credito"` y `saldo_inicial=0`. La deuda emerge de los `Gasto` cuyo `caja_id` apunta a la TC; los pagos son `Movimiento` con `caja_destino_id` = TC.
+- **Resumen**: la deuda y disponible se calculan al cierre del periodo activo (`fecha < fin`), no como acumulado eterno.
+- **Patrimonio**: el cálculo de Δ Patrimonio en `state/resumen.py` excluye cajas TC y gastos hechos con TC. Los pagos a TC sí restan (es plata real que sale de tus cajas).
+- **% Ahorro**: `(Patrimonio + gastos categoría "Ahorro") / Ingresos × 100`. Permite reflejar plata destinada a ahorro/inversión aunque no esté "sobrando".
+- **Cuota de manejo automática**: `CajasState._cobrar_cuotas_manejo_si_corresponde()` corre al cargar la página de Cajas y crea un `Gasto` mensual con `notas="[AUTO] Cuota de manejo mensual"` cuando hoy ≥ `dia_cobro_cuota` y aún no se generó este mes (`Caja.ultimo_cobro_cuota = "YYYY-MM"`).
+- **Generar recurrentes**: además de gastos recurrentes, el botón también crea cuotas de manejo TC del periodo destino, **solo si la fecha del cobro ya pasó** (no anticipa cobros futuros). Idempotente por (descripción, monto, fecha).
 
 ### 8.1 Añadir una página nueva
 

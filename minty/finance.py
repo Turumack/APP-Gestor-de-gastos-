@@ -82,6 +82,7 @@ CATEGORIAS_GASTO: list[str] = [
     "Compra casual",
     "Suscripciones",
     "Deuda",
+    "Ahorro",
     "Otros",
 ]
 
@@ -102,6 +103,7 @@ COLOR_CATEGORIA: dict[str, str] = {
     "Compra casual":   "#8b5cf6",
     "Suscripciones":   "#c084fc",
     "Deuda":           "#ef4444",
+    "Ahorro":          "#10b981",
     "Otros":           "#94a3b8",
 }
 

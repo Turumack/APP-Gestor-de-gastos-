@@ -17,6 +17,20 @@ class Caja(rx.Model, table=True):
     orden: int = 0
     activa: bool = True
     notas: str = ""
+    # ── Campos exclusivos para tipo == "tarjeta_credito" (TC) ──
+    cupo_total_cop: float = 0.0          # cupo asignado por el banco (en COP)
+    interes_mensual_compras: float = 0.0  # %
+    interes_ea_compras: float = 0.0       # %
+    interes_mensual_avances: float = 0.0  # %
+    interes_ea_avances: float = 0.0       # %
+    cuota_manejo: float = 0.0             # COP, cobrada cada mes
+    dia_cobro_cuota: int = 1              # día del mes en que se cobra cuota manejo
+    dia_corte: int = 1                    # día de corte del periodo
+    usa_dos_cortes: bool = False          # TC con dos fechas de corte mensuales
+    dia_corte_2: int = 15                 # segundo día de corte (si usa_dos_cortes)
+    dia_pago: int = 1                     # día límite de pago
+    trm_tc: float = 0.0                   # TRM propio del banco para conversión USD (manual)
+    ultimo_cobro_cuota: str = ""          # "YYYY-MM" del último cobro idempotente
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
 

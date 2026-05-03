@@ -33,6 +33,27 @@ class CajaRow(BaseModel):
     orden: int
     activa: bool
     notas: str
+    # ── Campos TC (sólo relevantes si tipo == "tarjeta_credito") ──
+    es_tc: bool = False
+    cupo_total_cop: float = 0.0
+    cupo_total_fmt: str = "$0"
+    deuda_cop: float = 0.0
+    deuda_cop_fmt: str = "$0"
+    cupo_disponible: float = 0.0
+    cupo_disponible_fmt: str = "$0"
+    pct_uso: float = 0.0
+    pct_uso_fmt: str = "0%"
+    interes_mensual_compras: float = 0.0
+    interes_ea_compras: float = 0.0
+    interes_mensual_avances: float = 0.0
+    interes_ea_avances: float = 0.0
+    cuota_manejo: float = 0.0
+    cuota_manejo_fmt: str = "$0"
+    dia_cobro_cuota: int = 1
+    dia_corte: int = 1
+    dia_pago: int = 1
+    trm_tc: float = 0.0
+    trm_tc_fmt: str = "$0"
 
 
 class MovimientoRow(BaseModel):
@@ -53,6 +74,13 @@ class CajasState(rx.State):
     movimientos: list[MovimientoRow] = []
     total_patrimonio: float = 0.0
     total_fmt: str = "$0"
+    # Totales TC agregados (excluidos del patrimonio)
+    total_deuda_tc: float = 0.0
+    total_deuda_tc_fmt: str = "$0"
+    total_cupo_tc: float = 0.0
+    total_cupo_tc_fmt: str = "$0"
+    total_disponible_tc: float = 0.0
+    total_disponible_tc_fmt: str = "$0"
 
     # Form caja
     form_open: bool = False
@@ -65,6 +93,31 @@ class CajasState(rx.State):
     form_color: str = "#a78bfa"
     form_notas: str = ""
     form_msg: str = ""
+    # Form caja — campos TC
+    form_cupo_total_cop: float = 0.0
+    form_interes_mensual_compras: float = 0.0
+    form_interes_ea_compras: float = 0.0
+    form_interes_mensual_avances: float = 0.0
+    form_interes_ea_avances: float = 0.0
+    form_cuota_manejo: float = 0.0
+    form_dia_cobro_cuota: int = 1
+    form_dia_corte: int = 1
+    form_usa_dos_cortes: bool = False
+    form_dia_corte_2: int = 15
+    form_dia_pago: int = 1
+    form_trm_tc: float = 0.0
+
+    # Form deuda directa (carga manual a TC sin pasar por gastos.py)
+    deuda_open: bool = False
+    deuda_caja_id: int = 0
+    deuda_caja_nombre: str = ""
+    deuda_fecha: str = date.today().isoformat()
+    deuda_desc: str = ""
+    deuda_moneda: str = "COP"        # "COP" | "USD"
+    deuda_monto_cop: float = 0.0     # si moneda=COP: monto directo; si USD: convertido con trm_tc
+    deuda_monto_usd: float = 0.0     # si moneda=USD
+    deuda_trm_tc_actual: float = 0.0 # snapshot al abrir el modal (informativo)
+    deuda_msg: str = ""
 
     # Form movimiento
     mov_open: bool = False
@@ -93,9 +146,13 @@ class CajasState(rx.State):
         ini = date.fromisoformat(per.fecha_inicio)
         fin = date.fromisoformat(per.fecha_fin)
 
+        # Antes de calcular saldos: cobro automático de cuotas de manejo
+        # (idempotente por mes mediante caja.ultimo_cobro_cuota = "YYYY-MM").
+        self._cobrar_cuotas_manejo_si_corresponde()
+
         with rx.session() as s:
             cajas = s.exec(
-                sqlmodel.select(Caja).order_by(Caja.orden, Caja.id)
+                sqlmodel.select(Caja).where(Caja.activa == True).order_by(Caja.orden, Caja.id)  # noqa: E712
             ).all()
 
             # Proyección al cierre del período seleccionado:
@@ -142,9 +199,15 @@ class CajasState(rx.State):
 
             rows: list[CajaRow] = []
             total = 0.0
+            total_deuda_tc = 0.0
+            total_cupo_tc = 0.0
             for c in cajas:
                 saldo = saldos.get(c.id, 0.0)
                 faltante = abs(saldo) if saldo < 0 else 0.0
+                es_tc = (c.tipo == "tarjeta_credito")
+                deuda_cop = abs(saldo) if (es_tc and saldo < 0) else 0.0
+                cupo_disp = max(0.0, (c.cupo_total_cop or 0.0) - deuda_cop) if es_tc else 0.0
+                pct_uso = (deuda_cop / c.cupo_total_cop * 100.0) if (es_tc and (c.cupo_total_cop or 0) > 0) else 0.0
                 rows.append(CajaRow(
                     id=c.id, nombre=c.nombre, tipo=c.tipo,
                     tipo_label=TIPO_CAJA_LABEL.get(c.tipo, c.tipo),
@@ -157,9 +220,32 @@ class CajasState(rx.State):
                     gasto_periodo=gasto_periodo.get(c.id, 0.0),
                     gasto_periodo_fmt=f"${gasto_periodo.get(c.id, 0.0):,.0f}",
                     color=c.color, orden=c.orden, activa=c.activa, notas=c.notas or "",
+                    es_tc=es_tc,
+                    cupo_total_cop=c.cupo_total_cop or 0.0,
+                    cupo_total_fmt=f"${(c.cupo_total_cop or 0.0):,.0f}",
+                    deuda_cop=deuda_cop,
+                    deuda_cop_fmt=f"${deuda_cop:,.0f}",
+                    cupo_disponible=cupo_disp,
+                    cupo_disponible_fmt=f"${cupo_disp:,.0f}",
+                    pct_uso=pct_uso,
+                    pct_uso_fmt=f"{pct_uso:.0f}%",
+                    interes_mensual_compras=c.interes_mensual_compras or 0.0,
+                    interes_ea_compras=c.interes_ea_compras or 0.0,
+                    interes_mensual_avances=c.interes_mensual_avances or 0.0,
+                    interes_ea_avances=c.interes_ea_avances or 0.0,
+                    cuota_manejo=c.cuota_manejo or 0.0,
+                    cuota_manejo_fmt=f"${(c.cuota_manejo or 0.0):,.0f}",
+                    dia_cobro_cuota=c.dia_cobro_cuota or 1,
+                    dia_corte=c.dia_corte or 1,
+                    dia_pago=c.dia_pago or 1,
+                    trm_tc=c.trm_tc or 0.0,
+                    trm_tc_fmt=f"${(c.trm_tc or 0.0):,.2f}",
                 ))
-                if c.activa and c.tipo != "tarjeta_credito":
+                if c.activa and not es_tc:
                     total += saldo
+                if c.activa and es_tc:
+                    total_deuda_tc += deuda_cop
+                    total_cupo_tc += (c.cupo_total_cop or 0.0)
 
             mov_rows: list[MovimientoRow] = []
             for m in movs[:50]:
@@ -179,6 +265,13 @@ class CajasState(rx.State):
             self.movimientos = mov_rows
             self.total_patrimonio = total
             self.total_fmt = f"${total:,.0f}"
+            self.total_deuda_tc = total_deuda_tc
+            self.total_deuda_tc_fmt = f"${total_deuda_tc:,.0f}"
+            self.total_cupo_tc = total_cupo_tc
+            self.total_cupo_tc_fmt = f"${total_cupo_tc:,.0f}"
+            disponible_tc = max(0.0, total_cupo_tc - total_deuda_tc)
+            self.total_disponible_tc = disponible_tc
+            self.total_disponible_tc_fmt = f"${disponible_tc:,.0f}"
 
             # Si no hay preferida seleccionada o quedó inactiva, tomar una sugerida por nombre o primera activa.
             ids_activos = [r.id for r in rows if r.activa]
@@ -215,6 +308,18 @@ class CajasState(rx.State):
         self.form_saldo_inicial = 0.0
         self.form_color = "#a78bfa"
         self.form_notas = ""
+        self.form_cupo_total_cop = 0.0
+        self.form_interes_mensual_compras = 0.0
+        self.form_interes_ea_compras = 0.0
+        self.form_interes_mensual_avances = 0.0
+        self.form_interes_ea_avances = 0.0
+        self.form_cuota_manejo = 0.0
+        self.form_dia_cobro_cuota = 1
+        self.form_dia_corte = 1
+        self.form_usa_dos_cortes = False
+        self.form_dia_corte_2 = 15
+        self.form_dia_pago = 1
+        self.form_trm_tc = 0.0
 
     @rx.event
     def editar(self, caja_id: int):
@@ -230,6 +335,18 @@ class CajasState(rx.State):
             self.form_saldo_inicial = c.saldo_inicial
             self.form_color = c.color
             self.form_notas = c.notas or ""
+            self.form_cupo_total_cop = c.cupo_total_cop or 0.0
+            self.form_interes_mensual_compras = c.interes_mensual_compras or 0.0
+            self.form_interes_ea_compras = c.interes_ea_compras or 0.0
+            self.form_interes_mensual_avances = c.interes_mensual_avances or 0.0
+            self.form_interes_ea_avances = c.interes_ea_avances or 0.0
+            self.form_cuota_manejo = c.cuota_manejo or 0.0
+            self.form_dia_cobro_cuota = c.dia_cobro_cuota or 1
+            self.form_dia_corte = c.dia_corte or 1
+            self.form_usa_dos_cortes = bool(c.usa_dos_cortes)
+            self.form_dia_corte_2 = c.dia_corte_2 or 15
+            self.form_dia_pago = c.dia_pago or 1
+            self.form_trm_tc = c.trm_tc or 0.0
             self.form_open = True
 
     @rx.event
@@ -237,6 +354,9 @@ class CajasState(rx.State):
         if not self.form_nombre.strip():
             self.form_msg = "⚠ El nombre es obligatorio."
             return
+        es_tc = (self.form_tipo == "tarjeta_credito")
+        # Para TC el saldo inicial siempre es 0 (la deuda se construye con gastos).
+        saldo_ini = 0.0 if es_tc else self.form_saldo_inicial
         with rx.session() as s:
             if self.form_editing_id:
                 c = s.get(Caja, self.form_editing_id)
@@ -246,9 +366,22 @@ class CajasState(rx.State):
                 c.tipo = self.form_tipo
                 c.entidad = self.form_entidad.strip()
                 c.exento_4x1000 = self.form_exento_4x1000
-                c.saldo_inicial = self.form_saldo_inicial
+                c.saldo_inicial = saldo_ini
                 c.color = self.form_color
                 c.notas = self.form_notas.strip()
+                if es_tc:
+                    c.cupo_total_cop = self.form_cupo_total_cop
+                    c.interes_mensual_compras = self.form_interes_mensual_compras
+                    c.interes_ea_compras = self.form_interes_ea_compras
+                    c.interes_mensual_avances = self.form_interes_mensual_avances
+                    c.interes_ea_avances = self.form_interes_ea_avances
+                    c.cuota_manejo = self.form_cuota_manejo
+                    c.dia_cobro_cuota = max(1, min(31, int(self.form_dia_cobro_cuota or 1)))
+                    c.dia_corte = max(1, min(31, int(self.form_dia_corte or 1)))
+                    c.usa_dos_cortes = bool(self.form_usa_dos_cortes)
+                    c.dia_corte_2 = max(1, min(31, int(self.form_dia_corte_2 or 15)))
+                    c.dia_pago = max(1, min(31, int(self.form_dia_pago or 1)))
+                    c.trm_tc = float(self.form_trm_tc or 0.0)
                 s.add(c)
             else:
                 c = Caja(
@@ -256,9 +389,21 @@ class CajasState(rx.State):
                     tipo=self.form_tipo,
                     entidad=self.form_entidad.strip(),
                     exento_4x1000=self.form_exento_4x1000,
-                    saldo_inicial=self.form_saldo_inicial,
+                    saldo_inicial=saldo_ini,
                     color=self.form_color,
                     notas=self.form_notas.strip(),
+                    cupo_total_cop=(self.form_cupo_total_cop if es_tc else 0.0),
+                    interes_mensual_compras=(self.form_interes_mensual_compras if es_tc else 0.0),
+                    interes_ea_compras=(self.form_interes_ea_compras if es_tc else 0.0),
+                    interes_mensual_avances=(self.form_interes_mensual_avances if es_tc else 0.0),
+                    interes_ea_avances=(self.form_interes_ea_avances if es_tc else 0.0),
+                    cuota_manejo=(self.form_cuota_manejo if es_tc else 0.0),
+                    dia_cobro_cuota=(max(1, min(31, int(self.form_dia_cobro_cuota or 1))) if es_tc else 1),
+                    dia_corte=(max(1, min(31, int(self.form_dia_corte or 1))) if es_tc else 1),
+                    usa_dos_cortes=(bool(self.form_usa_dos_cortes) if es_tc else False),
+                    dia_corte_2=(max(1, min(31, int(self.form_dia_corte_2 or 15))) if es_tc else 15),
+                    dia_pago=(max(1, min(31, int(self.form_dia_pago or 1))) if es_tc else 1),
+                    trm_tc=(float(self.form_trm_tc or 0.0) if es_tc else 0.0),
                 )
                 s.add(c)
             s.commit()
@@ -421,4 +566,188 @@ class CajasState(rx.State):
             if m:
                 s.delete(m)
                 s.commit()
+        await self.load()
+
+    # ── Tarjetas de crédito ──
+    def _cobrar_cuotas_manejo_si_corresponde(self):
+        """Genera idempotentemente un Gasto por la cuota de manejo del mes
+        para cada caja TC activa, si:
+          - tiene cuota_manejo > 0
+          - hoy >= dia_cobro_cuota
+          - aún no se generó este mes (caja.ultimo_cobro_cuota != "YYYY-MM").
+        El gasto incrementa la deuda (saldo se vuelve más negativo).
+        """
+        hoy = date.today()
+        yyyymm = f"{hoy.year:04d}-{hoy.month:02d}"
+        with rx.session() as s:
+            tcs = s.exec(
+                sqlmodel.select(Caja).where(
+                    Caja.tipo == "tarjeta_credito",
+                    Caja.activa == True,  # noqa: E712
+                )
+            ).all()
+            cambios = False
+            for c in tcs:
+                if (c.cuota_manejo or 0) <= 0:
+                    continue
+                dia_obj = max(1, min(31, c.dia_cobro_cuota or 1))
+                if hoy.day < dia_obj:
+                    continue
+                if (c.ultimo_cobro_cuota or "") == yyyymm:
+                    continue
+                # Fecha real del cobro: el día configurado (cap a fin de mes).
+                try:
+                    fecha_cobro = hoy.replace(day=dia_obj)
+                except ValueError:
+                    fecha_cobro = hoy
+                gasto = Gasto(
+                    fecha=fecha_cobro,
+                    descripcion=f"Cuota de manejo {c.nombre}",
+                    categoria="Servicios",
+                    monto=float(c.cuota_manejo),
+                    moneda="COP",
+                    monto_original=float(c.cuota_manejo),
+                    medio_pago="Tarjeta de crédito",
+                    caja_id=c.id,
+                    notas="[AUTO] Cuota de manejo mensual",
+                )
+                s.add(gasto)
+                c.ultimo_cobro_cuota = yyyymm
+                s.add(c)
+                cambios = True
+            if cambios:
+                s.commit()
+
+    @rx.event
+    async def actualizar_trm_tc(self, caja_tc_id: int, valor: float):
+        """Actualiza manualmente el TRM propio de la TC."""
+        try:
+            v = float(valor or 0)
+        except (TypeError, ValueError):
+            v = 0.0
+        with rx.session() as s:
+            c = s.get(Caja, caja_tc_id)
+            if not c or c.tipo != "tarjeta_credito":
+                return
+            c.trm_tc = max(0.0, v)
+            s.add(c)
+            s.commit()
+        await self.load()
+
+    @rx.event
+    def pagar_tarjeta(self, caja_tc_id: int):
+        """Abre el modal de transferencia preconfigurado para pagar la TC:
+        destino = TC, origen = caja preferida o primera cuenta con saldo positivo,
+        monto sugerido = deuda actual.
+        """
+        tc = next((r for r in self.rows if r.id == caja_tc_id and r.es_tc), None)
+        if not tc:
+            return
+        # Origen sugerido: preferida o cualquier cuenta no-TC con saldo positivo.
+        candidatas = [
+            r for r in self.rows
+            if r.activa and not r.es_tc and r.id != caja_tc_id and r.saldo_actual > 0
+        ]
+        pref = next((r for r in candidatas if r.id == self.auto_origen_preferido_id), None)
+        origen = pref or (max(candidatas, key=lambda r: r.saldo_actual) if candidatas else None)
+
+        self.mov_open = True
+        self.mov_fecha = date.today().isoformat()
+        self.mov_destino_id = caja_tc_id
+        self.mov_origen_id = origen.id if origen else 0
+        self.mov_monto = tc.deuda_cop
+        self.mov_desc = f"Pago tarjeta {tc.nombre}"
+        if not origen:
+            self.mov_msg = "⚠ No hay cuenta con saldo positivo para sugerir como origen."
+        else:
+            self.mov_msg = f"💡 Pago sugerido: {tc.deuda_cop_fmt} desde {origen.nombre}."
+
+    # ── Carga directa de deuda a una TC ──
+    @rx.event
+    def abrir_cargar_deuda(self, caja_tc_id: int):
+        """Abre el modal para cargar deuda directa (sin pasar por gastos.py)."""
+        tc = next((r for r in self.rows if r.id == caja_tc_id and r.es_tc), None)
+        if not tc:
+            return
+        self.deuda_open = True
+        self.deuda_caja_id = caja_tc_id
+        self.deuda_caja_nombre = tc.nombre
+        self.deuda_fecha = date.today().isoformat()
+        self.deuda_desc = ""
+        self.deuda_moneda = "COP"
+        self.deuda_monto_cop = 0.0
+        self.deuda_monto_usd = 0.0
+        self.deuda_trm_tc_actual = tc.trm_tc or 0.0
+        self.deuda_msg = ""
+
+    @rx.event
+    def cerrar_cargar_deuda(self):
+        self.deuda_open = False
+        self.deuda_msg = ""
+
+    @rx.event
+    async def guardar_deuda(self):
+        """Crea un Gasto directo sobre la TC con el monto en COP indicado.
+
+        No aplica intereses ni recálculos: el monto se carga tal cual,
+        ya que la idea es reflejar el cargo que el banco YA hizo
+        (con su TRM y sus intereses incluidos en el monto cobrado).
+        """
+        if self.deuda_caja_id <= 0:
+            self.deuda_msg = "⚠ Caja TC inválida."
+            return
+        if not self.deuda_desc.strip():
+            self.deuda_msg = "⚠ La descripción es obligatoria."
+            return
+
+        if self.deuda_moneda == "USD":
+            if self.deuda_monto_usd <= 0:
+                self.deuda_msg = "⚠ El monto USD debe ser mayor a 0."
+                return
+            if self.deuda_trm_tc_actual <= 0:
+                self.deuda_msg = (
+                    "⚠ La TC no tiene TRM propio configurado. "
+                    "Edita la caja y carga el TRM antes de continuar."
+                )
+                return
+            monto_cop = float(self.deuda_monto_usd) * float(self.deuda_trm_tc_actual)
+            monto_original = float(self.deuda_monto_usd)
+            trm_aplicado = float(self.deuda_trm_tc_actual)
+            moneda = "USD"
+        else:
+            if self.deuda_monto_cop <= 0:
+                self.deuda_msg = "⚠ El monto COP debe ser mayor a 0."
+                return
+            monto_cop = float(self.deuda_monto_cop)
+            monto_original = monto_cop
+            trm_aplicado = 0.0
+            moneda = "COP"
+
+        try:
+            fecha = date.fromisoformat(self.deuda_fecha) if self.deuda_fecha else date.today()
+        except (TypeError, ValueError):
+            fecha = date.today()
+
+        with rx.session() as s:
+            gasto = Gasto(
+                fecha=fecha,
+                descripcion=self.deuda_desc.strip(),
+                categoria="Otros",
+                monto=monto_cop,
+                moneda=moneda,
+                monto_original=monto_original,
+                trm=trm_aplicado,
+                medio_pago="Tarjeta de crédito",
+                caja_id=self.deuda_caja_id,
+                notas=(
+                    f"[DEUDA TC] Carga directa con TRM TC={trm_aplicado:,.2f}"
+                    if moneda == "USD" else
+                    "[DEUDA TC] Carga directa (sin recálculo de intereses)."
+                ),
+            )
+            s.add(gasto)
+            s.commit()
+
+        self.deuda_open = False
+        self.deuda_msg = "✅ Deuda cargada."
         await self.load()

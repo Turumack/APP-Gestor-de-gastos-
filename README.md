@@ -38,7 +38,8 @@ A diferencia de un Excel, tiene **estado reactivo**, formularios, validación, r
 | 📈 **Resumen** | Análisis del periodo: ingresos vs. gastos, saldos por caja, top categorías. |
 | 💸 **Gastos** | Registro detallado, categorías, compras a cuotas, **recurrencias avanzadas** (días/semanas/meses/años con intervalo). |
 | 💰 **Ingresos** | Salarios, freelance, devoluciones — con soporte multi-moneda y recurrencia. |
-| 🏦 **Cajas** | Múltiples cuentas (efectivo, banco, ahorros, tarjeta) con saldos calculados en tiempo real. |
+| 🏦 **Cajas** | Múltiples cuentas (efectivo, banco, ahorros, **tarjetas de crédito**) con saldos calculados en tiempo real. |
+| 💳 **Tarjetas de crédito** | Cupo, deuda, disponible, intereses (compras/avances, mes/EA), cuota de manejo automática, día de corte (1 ó 2), día de pago, TRM propio del banco para gastos en USD, modal de **Pago de tarjeta** y **Cargar deuda directa** sin afectar tu efectivo real. |
 | 🛒 **Compras** | Lista de mercado / wishlist con grupos, ítems recurrentes y conversión a gasto en un click. |
 | 📦 **Baúl** | Inventario de bienes durables con depreciación opcional. |
 | 📉 **Inversiones** | Seguimiento de portafolio, P&L, rendimiento por activo. |
@@ -46,7 +47,8 @@ A diferencia de un Excel, tiene **estado reactivo**, formularios, validación, r
 ### 🛠️ Características técnicas
 
 - ⚡ **Reactividad total** — la UI se actualiza sola cuando el state cambia (sin `setState` ni Redux).
-- 🔁 **Recurrencias inteligentes** — define un gasto cada 2 meses, cada 15 días o cada año; la app genera las ocurrencias automáticamente y de forma idempotente.
+- 📊 **Patrimonio real** — métrica en Resumen que mide cuánto creció (o bajó) tu plata real entre el inicio y el cierre del periodo, excluyendo cajas TC. **% Ahorro** se calcula como `(Patrimonio + categoría "Ahorro") / Ingresos`.
+- 🔁 **Recurrencias inteligentes** — define un gasto cada 2 meses, cada 15 días o cada año; la app genera las ocurrencias automáticamente y de forma idempotente. También genera **cuotas de manejo** de TC del periodo cuando ya pasó la fecha de cobro.
 - 💳 **Compras a cuotas** — registra una compra a 12 cuotas y se reparten correctamente entre los periodos.
 - 🌍 **Conversión de divisas en vivo** — TRM oficial (datos.gov.co) + Frankfurter para EUR/GBP/etc.
 - 🎨 **Tema claro/oscuro** con animación de transición de vista (View Transitions API).
@@ -155,7 +157,8 @@ Los tests cubren cálculos de saldos, generación de recurrencias y reparto de c
 - [x] Editar grupos e ítems de compra
 - [x] Compras únicas vs. recurrentes
 - [x] Eliminar compra completa (todas sus cuotas)
-- [x] Theme toggle con View Transitions API
+- [x] Tarjetas de crédito completas (cupo, deuda, intereses, cuota de manejo, TRM propio, pagos)
+- [x] Patrimonio real + % Ahorro basado en patrimonio + categoría "Ahorro"
 - [ ] Importar extractos bancarios (CSV / OFX)
 - [ ] Gráficos interactivos en el resumen
 - [ ] App móvil (Reflex Native cuando esté maduro)

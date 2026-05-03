@@ -7,18 +7,61 @@ from minty.state import PeriodoState
 
 
 def _metric_grid() -> rx.Component:
-    return rx.grid(
-        metric_card("Ingresos", f"${ResumenState.total_ingresos:,.0f}",
-                    "trending-up", T.GREEN),
-        metric_card("Gastos", f"${ResumenState.total_gastos:,.0f}",
-                    "trending-down", T.PINK),
-        metric_card("Balance",
-                    f"${ResumenState.balance:,.0f}",
-                    "wallet", T.VIOLET),
-        metric_card("% Ahorro",
-                    f"{ResumenState.pct_ahorro_real:.1f}%",
-                    "piggy-bank", T.AMBER),
-        columns="4", spacing="4", width="100%",
+    return rx.vstack(
+        rx.grid(
+            metric_card("Ingresos", f"${ResumenState.total_ingresos:,.0f}",
+                        "trending-up", T.GREEN),
+            metric_card("Gastos", f"${ResumenState.total_gastos:,.0f}",
+                        "trending-down", T.PINK),
+            metric_card("Patrimonio",
+                        ResumenState.delta_patrimonio_fmt,
+                        "wallet", T.VIOLET),
+            metric_card("% Ahorro",
+                        f"{ResumenState.pct_ahorro_real:.1f}%",
+                        "piggy-bank", T.AMBER),
+            columns="4", spacing="4", width="100%",
+        ),
+        rx.cond(
+            ResumenState.tiene_tc,
+            glass_card(
+                rx.hstack(
+                    rx.box(
+                        rx.icon("credit-card", size=22, color="white"),
+                        background=T.GRADIENT_BRAND,
+                        border_radius="10px",
+                        padding="10px",
+                    ),
+                    rx.vstack(
+                        rx.text("Balance crédito", size="2",
+                                color=T.TEXT_MUTED, weight="medium"),
+                        rx.heading(ResumenState.tc_balance_fmt, size="7",
+                                   font_family=T.FONT_HEAD, color=T.PINK),
+                        spacing="0", align="start",
+                    ),
+                    rx.spacer(),
+                    rx.vstack(
+                        rx.text("Deuda", size="1", color=T.TEXT_DIM),
+                        rx.heading(ResumenState.tc_deuda_fmt, size="5",
+                                   font_family=T.FONT_HEAD, color=T.PINK),
+                        spacing="0", align="end",
+                    ),
+                    rx.box(width="1px", height="44px",
+                           background="rgba(255,255,255,0.08)"),
+                    rx.vstack(
+                        rx.text("Disponible", size="1", color=T.TEXT_DIM),
+                        rx.heading(ResumenState.tc_disponible_fmt, size="5",
+                                   font_family=T.FONT_HEAD, color=T.GREEN),
+                        rx.text("de " + ResumenState.tc_cupo_total_fmt,
+                                size="1", color=T.TEXT_DIM),
+                        spacing="0", align="end",
+                    ),
+                    spacing="4", width="100%", align="center",
+                ),
+                padding="18px 22px",
+            ),
+            rx.fragment(),
+        ),
+        spacing="4", width="100%",
     )
 
 

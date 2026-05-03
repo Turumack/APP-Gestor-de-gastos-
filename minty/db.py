@@ -27,6 +27,20 @@ _MIGRATIONS_ADD_COLUMNS = [
     ("shoppinggroup", "recurrente",  "BOOLEAN DEFAULT 0"),
     ("gasto", "recurrencia_unidad",     "VARCHAR DEFAULT ''"),
     ("gasto", "recurrencia_intervalo",  "INTEGER DEFAULT 1"),
+    # Campos TC (tarjeta de crédito) en caja
+    ("caja", "cupo_total_cop",          "FLOAT DEFAULT 0"),
+    ("caja", "interes_mensual_compras", "FLOAT DEFAULT 0"),
+    ("caja", "interes_ea_compras",      "FLOAT DEFAULT 0"),
+    ("caja", "interes_mensual_avances", "FLOAT DEFAULT 0"),
+    ("caja", "interes_ea_avances",      "FLOAT DEFAULT 0"),
+    ("caja", "cuota_manejo",            "FLOAT DEFAULT 0"),
+    ("caja", "dia_cobro_cuota",         "INTEGER DEFAULT 1"),
+    ("caja", "dia_corte",               "INTEGER DEFAULT 1"),
+    ("caja", "usa_dos_cortes",          "BOOLEAN DEFAULT 0"),
+    ("caja", "dia_corte_2",             "INTEGER DEFAULT 15"),
+    ("caja", "dia_pago",                "INTEGER DEFAULT 1"),
+    ("caja", "trm_tc",                  "FLOAT DEFAULT 0"),
+    ("caja", "ultimo_cobro_cuota",      "VARCHAR DEFAULT ''"),
 ]
 
 # Índices para acelerar queries por período y por caja.
