@@ -5,7 +5,7 @@ from minty import db as _db  # noqa: F401  (crea tablas SQLite al importar)
 from minty.pages import (
     home_page, resumen_page, ingresos_page,
     gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
-    presupuestos_page, configuracion_page, login_page,
+    presupuestos_page, metas_page, configuracion_page, login_page,
 )
 from minty.state.auth import AuthState
 from minty.state.resumen import ResumenState
@@ -16,6 +16,7 @@ from minty.state.cajas import CajasState
 from minty.state.inversiones import InversionesState
 from minty.state.baul import BaulState
 from minty.state.presupuestos import PresupuestosState
+from minty.state.metas import MetasState
 from minty.state.config import ConfigState
 
 
@@ -55,6 +56,8 @@ app.add_page(baul_page,        route="/baul",        title="Baúl · MINTY",
              on_load=[_GUARD, BaulState.load])
 app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · MINTY",
              on_load=[_GUARD, PresupuestosState.load])
+app.add_page(metas_page,       route="/metas",       title="Metas · MINTY",
+             on_load=[_GUARD, MetasState.load])
 app.add_page(configuracion_page, route="/configuracion", title="Configuración · MINTY",
              on_load=[_GUARD, ConfigState.load])
 app.add_page(login_page,       route="/login",       title="Iniciar sesión · MINTY")

@@ -61,6 +61,8 @@ class Gasto(rx.Model, table=True):
     shopping_group_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="shoppinggroup.id")
     shopping_item_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="shoppingitem.id")
     shopping_pct: float = 100.0
+    # Meta de ahorro: si está presente, este gasto es un aporte a una meta.
+    meta_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="meta.id")
     recurrente: bool = False
     # Recurrencia avanzada: unidad ("dia"|"semana"|"mes"|"ñ") + intervalo (cada N).
     # Vacío o "mes"+1 = mensual clásico (compatible con datos antiguos).
@@ -156,4 +158,23 @@ class User(rx.Model, table=True):
     activo: bool = True
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
     ultimo_login: Optional[datetime] = None
+
+
+class Meta(rx.Model, table=True):
+    """Meta de ahorro persistente (no atada a un mes).
+
+    Cada aporte se registra como un Gasto con ``meta_id`` apuntando a esta
+    meta y ``categoria`` igual al ``nombre`` de la meta. Así el dinero sale
+    de la caja origen igual que un gasto normal, pero queda etiquetado
+    como aporte a meta para poder calcular el progreso global.
+    """
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    nombre: str = ""
+    objetivo: float = 0.0           # 0 = sin objetivo definido
+    fecha_objetivo: Optional[_date] = None
+    color: str = "#a78bfa"
+    icono: str = "target"           # nombre de icono lucide
+    activa: bool = True
+    notas: str = ""
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 

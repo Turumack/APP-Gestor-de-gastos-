@@ -62,6 +62,8 @@ _MIGRATIONS_ADD_COLUMNS = [
     ("caja", "dia_pago",                "INTEGER DEFAULT 1"),
     ("caja", "trm_tc",                  "FLOAT DEFAULT 0"),
     ("caja", "ultimo_cobro_cuota",      "VARCHAR DEFAULT ''"),
+    # Aportes a metas: enlace opcional desde Gasto a Meta.
+    ("gasto", "meta_id",                "INTEGER"),
 ]
 
 # Índices para acelerar queries por período y por caja.
@@ -77,6 +79,7 @@ _INDEXES = [
     ("idx_shoppingitem_group",     "shoppingitem", "group_id"),
     ("idx_presupuesto_periodo",    "presupuesto",  "anio, mes"),
     ("idx_gasto_compra_id",        "gasto",        "compra_id"),
+    ("idx_gasto_meta_id",          "gasto",        "meta_id"),
 ]
 
 

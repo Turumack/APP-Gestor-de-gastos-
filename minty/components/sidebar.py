@@ -139,6 +139,7 @@ def sidebar() -> rx.Component:
             _section_label("PATRIMONIO"),
             _nav_item("Cajas", "wallet", "/cajas", route),
             _nav_item("Presupuestos", "piggy-bank", "/presupuestos", route),
+            _nav_item("Metas", "target", "/metas", route),
             _nav_item("Inversiones", "landmark", "/inversiones", route),
             _nav_item("Baúl", "archive", "/baul", route),
 
