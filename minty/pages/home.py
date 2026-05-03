@@ -128,7 +128,7 @@ def home_page() -> rx.Component:
 
         # ── Métricas demo ──
         rx.grid(
-            metric_card("Saldo del mes", f"${ResumenState.balance:,.0f}", "wallet", T.VIOLET),
+            metric_card("Patrimonio", ResumenState.delta_patrimonio_fmt, "wallet", T.VIOLET),
             metric_card("Ingresos", f"${ResumenState.total_ingresos:,.0f}", "trending-up", T.GREEN),
             metric_card("Gastos", f"${ResumenState.total_gastos:,.0f}", "trending-down", T.PINK),
             metric_card("Ahorro", f"{ResumenState.pct_ahorro_real:.1f}%", "piggy-bank", T.AMBER),
