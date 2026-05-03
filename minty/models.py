@@ -147,3 +147,13 @@ class Presupuesto(rx.Model, table=True):
     notas: str = ""
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
+
+class User(rx.Model, table=True):
+    """Usuario de la app. La contraseña se guarda como hash bcrypt."""
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    username: str = sqlmodel.Field(default="", index=True, unique=True)
+    password_hash: str = ""           # bcrypt (60 chars), nunca texto plano
+    activo: bool = True
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    ultimo_login: Optional[datetime] = None
+

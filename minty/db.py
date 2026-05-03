@@ -1,10 +1,31 @@
-"""Helper para crear/verificar tablas en la BD SQLite local."""
+"""Helper para crear/verificar tablas. Soporta SQLite (dev) y Postgres (prod)."""
 from pathlib import Path
 from sqlmodel import SQLModel, create_engine, text
+from sqlalchemy import inspect
 from rxconfig import config
 
 # Importar modelos para que se registren en SQLModel.metadata
 from minty import models  # noqa: F401
+
+
+def _is_postgres() -> bool:
+    return config.db_url.startswith("postgresql")
+
+
+def _norm_def(definicion: str) -> str:
+    """Normaliza defaults entre dialectos.
+
+    SQLite acepta ``DEFAULT 0`` para booleanos; Postgres no — exige TRUE/FALSE.
+    """
+    if not _is_postgres():
+        return definicion
+    up = definicion.upper()
+    if "BOOLEAN" in up:
+        return (
+            definicion.replace("DEFAULT 0", "DEFAULT FALSE")
+            .replace("DEFAULT 1", "DEFAULT TRUE")
+        )
+    return definicion
 
 
 # Columnas añadidas después de la creación inicial.
@@ -60,34 +81,26 @@ _INDEXES = [
 
 
 def _apply_lightweight_migrations(engine):
-    """Añade columnas nuevas a tablas existentes (SQLite ALTER TABLE ADD COLUMN)."""
+    """Añade columnas nuevas a tablas existentes. Idempotente, cross-DB."""
+    insp = inspect(engine)
     with engine.begin() as conn:
         for tabla, col, definicion in _MIGRATIONS_ADD_COLUMNS:
-            exists = conn.execute(
-                text(f"SELECT name FROM pragma_table_info('{tabla}') WHERE name = :c"),
-                {"c": col},
-            ).first()
-            if exists:
+            if not insp.has_table(tabla):
                 continue
-            # Tabla existe?
-            tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
-                {"t": tabla},
-            ).first()
-            if not tbl:
+            cols_existentes = {c["name"] for c in insp.get_columns(tabla)}
+            if col in cols_existentes:
                 continue
-            conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {definicion}"))
+            conn.execute(text(
+                f"ALTER TABLE {tabla} ADD COLUMN {col} {_norm_def(definicion)}"
+            ))
 
 
 def _apply_indexes(engine):
-    """Crea índices si la tabla existe (idempotente)."""
+    """Crea índices si la tabla existe (idempotente, cross-DB)."""
+    insp = inspect(engine)
     with engine.begin() as conn:
         for nombre, tabla, columnas in _INDEXES:
-            tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:t"),
-                {"t": tabla},
-            ).first()
-            if not tbl:
+            if not insp.has_table(tabla):
                 continue
             conn.execute(text(
                 f"CREATE INDEX IF NOT EXISTS {nombre} ON {tabla} ({columnas})"
@@ -96,20 +109,33 @@ def _apply_indexes(engine):
 
 def ensure_db():
     """Crea las tablas si no existen. Se llama al arrancar la app."""
-    data_dir = Path("data")
-    data_dir.mkdir(exist_ok=True)
+    global _ENGINE
+    if not _is_postgres():
+        Path("data").mkdir(exist_ok=True)
     engine = create_engine(config.db_url, echo=False)
+    _ENGINE = engine
     SQLModel.metadata.create_all(engine)
     _apply_lightweight_migrations(engine)
     _apply_indexes(engine)
 
-    # Backup automático (silencioso si falla, con cooldown interno).
-    try:
-        from minty.services.backup import hacer_backup
-        hacer_backup()
-    except Exception:
-        pass
+    # Backup automático solo en modo SQLite local.
+    if not _is_postgres():
+        try:
+            from minty.services.backup import hacer_backup
+            hacer_backup()
+        except Exception:
+            pass
+
+
+def get_engine():
+    """Devuelve el engine ya inicializado (llamando a ``ensure_db`` si hace falta)."""
+    if _ENGINE is None:
+        ensure_db()
+    return _ENGINE
 
 
 # Ejecutar al importar
+# Ejecutar al importar
+_ENGINE = None
 ensure_db()
+

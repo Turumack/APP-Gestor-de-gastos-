@@ -2,6 +2,7 @@
 import reflex as rx
 from minty import theme as T
 from minty.components.period_selector import period_selector
+from minty.state.auth import AuthState, auth_required
 
 
 # ── Item individual ─────────────────────────────────────
@@ -85,6 +86,22 @@ def sidebar() -> rx.Component:
             rx.spacer(height="20px"),
             rx.text("SISTEMA", size="1", color=T.TEXT_DIM, weight="bold", letter_spacing="0.1em", padding_left="14px"),
             _nav_item("Configuración", "settings", "/configuracion", route),
+            rx.cond(
+                auth_required(),
+                rx.box(
+                    rx.hstack(
+                        rx.icon("log-out", size=16, color=T.TEXT_MUTED),
+                        rx.text("Cerrar sesión", size="2", color=T.TEXT_MUTED),
+                        spacing="3", align="center",
+                    ),
+                    padding="10px 14px",
+                    border_radius="10px",
+                    cursor="pointer",
+                    on_click=AuthState.logout,
+                    _hover={"background": "rgba(255,255,255,0.04)"},
+                ),
+                rx.fragment(),
+            ),
 
             rx.spacer(),
 

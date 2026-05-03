@@ -5,8 +5,9 @@ from minty import db as _db  # noqa: F401  (crea tablas SQLite al importar)
 from minty.pages import (
     home_page, resumen_page, ingresos_page,
     gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
-    presupuestos_page, configuracion_page,
+    presupuestos_page, configuracion_page, login_page,
 )
+from minty.state.auth import AuthState
 from minty.state.resumen import ResumenState
 from minty.state.ingresos import IngresosState
 from minty.state.gastos import GastosState
@@ -34,23 +35,26 @@ app = rx.App(
     ],
 )
 
+_GUARD = AuthState.require_login
+
 app.add_page(home_page,        route="/",            title="MINTY",
-             on_load=ResumenState.load)
+             on_load=[_GUARD, ResumenState.load])
 app.add_page(resumen_page,     route="/resumen",     title="Resumen · MINTY",
-             on_load=ResumenState.load)
+             on_load=[_GUARD, ResumenState.load])
 app.add_page(ingresos_page,    route="/ingresos",    title="Ingresos · MINTY",
-             on_load=IngresosState.load)
+             on_load=[_GUARD, IngresosState.load])
 app.add_page(gastos_page,      route="/gastos",      title="Gastos · MINTY",
-             on_load=GastosState.load)
+             on_load=[_GUARD, GastosState.load])
 app.add_page(compras_page,     route="/compras",     title="Listas de compra · MINTY",
-             on_load=ComprasState.load)
+             on_load=[_GUARD, ComprasState.load])
 app.add_page(cajas_page,       route="/cajas",       title="Cajas · MINTY",
-             on_load=CajasState.load)
+             on_load=[_GUARD, CajasState.load])
 app.add_page(inversiones_page, route="/inversiones", title="Inversiones · MINTY",
-             on_load=InversionesState.load)
+             on_load=[_GUARD, InversionesState.load])
 app.add_page(baul_page,        route="/baul",        title="Baúl · MINTY",
-             on_load=BaulState.load)
+             on_load=[_GUARD, BaulState.load])
 app.add_page(presupuestos_page, route="/presupuestos", title="Presupuestos · MINTY",
-             on_load=PresupuestosState.load)
+             on_load=[_GUARD, PresupuestosState.load])
 app.add_page(configuracion_page, route="/configuracion", title="Configuración · MINTY",
-             on_load=ConfigState.load)
+             on_load=[_GUARD, ConfigState.load])
+app.add_page(login_page,       route="/login",       title="Iniciar sesión · MINTY")

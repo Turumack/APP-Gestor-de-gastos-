@@ -1,0 +1,15 @@
+# Reverse proxy: sirve el frontend estático y enruta /_event al backend Reflex.
+:{$PORT} {
+    encode gzip
+
+    # WebSocket / API de Reflex
+    @backend {
+        path /_event* /ping /_upload*
+    }
+    reverse_proxy @backend localhost:8000
+
+    # Frontend estático compilado por `reflex export`
+    root * /app/.web/_static
+    try_files {path} /index.html
+    file_server
+}

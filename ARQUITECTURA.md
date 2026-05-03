@@ -389,6 +389,94 @@ Los tests viven en `tests/test_finance.py` (19 tests). Cubren funciones puras de
 
 ---
 
+## 10.5 Despliegue en Railway (Postgres + auth)
+
+La app puede correr 24/7 en [Railway](https://railway.app) con Postgres gestionado y un login propio. La PC ya no necesita estar prendida.
+
+### Arquitectura en producción
+
+```
+┌──────────────────────────────────┐
+│  Railway service: minty           │
+│  ┌─────────────────────────────┐  │
+│  │ Caddy :$PORT                │  │  ← URL pública (https)
+│  │  ├─ /_event* → backend      │  │
+│  │  └─ resto    → .web/_static │  │
+│  └─────────────────────────────┘  │
+│  ┌─────────────────────────────┐  │
+│  │ reflex backend :8000         │  │  ← solo accesible vía Caddy
+│  └─────────────────────────────┘  │
+└────────────┬─────────────────────┘
+             │
+             ▼  (DATABASE_URL inyectada)
+   ┌────────────────────┐
+   │ Railway Postgres    │
+   └────────────────────┘
+```
+
+### Archivos de despliegue
+
+| Archivo | Rol |
+|---|---|
+| `Dockerfile` | Multi-stage: Node + Python build → runtime con Caddy + Reflex backend. |
+| `Caddyfile` | Reverse proxy. Sirve `/.web/_static` y proxypassa `/_event*`/`/ping`/`/_upload*` al backend `:8000`. |
+| `railway.json` | Builder Docker, restart on failure. |
+| `.dockerignore` | Excluye `.venv`, `data/`, `.web/`, etc. del contexto. |
+| `tools/migrar_sqlite_a_postgres.py` | Copia tu `data/minty.db` actual a la BD de Railway. |
+
+### Variables de entorno en Railway
+
+| Variable | Valor | Quién la pone |
+|---|---|---|
+| `DATABASE_URL` | conexión Postgres | Railway (al añadir el plugin) |
+| `MINTY_HOST` | `minty.up.railway.app` (tu dominio) | tú |
+| `PORT` | `8080` (o el que Railway asigne) | Railway |
+
+**No hay variables con credenciales.** El usuario y la contraseña viven solo en
+la tabla `user` de la BD, hasheados con **bcrypt** (sal aleatoria, costo 12).
+Si no existe ningún usuario activo en la BD, la app queda en modo abierto
+(útil para desarrollo local antes de configurar credenciales).
+
+### Pasos paso a paso
+
+1. **Crear el servicio**:
+   - En Railway: *New Project* → *Deploy from GitHub repo* → este repo.
+   - Añadir plugin *Postgres*. Railway inyecta `DATABASE_URL` automáticamente.
+2. **Configurar variables** (settings → Variables):
+   - `MINTY_HOST` con tu dominio.
+3. **Generar dominio público**: settings → Networking → *Generate Domain*. Copia el host.
+4. **Migrar datos** (una vez, opcional, si ya tienes una BD local):
+   ```powershell
+   $env:PG_URL = "postgresql://...railway"
+   python tools/migrar_sqlite_a_postgres.py
+   ```
+5. **Crear el usuario y contraseña** (obligatorio para activar el login):
+   ```powershell
+   # opción A: dentro de Railway (recomendado, usa la DATABASE_URL del servicio)
+   railway run python tools/set_password.py
+
+   # opción B: localmente apuntando al Postgres público de Railway
+   $env:DATABASE_URL = "postgresql://...railway"
+   python tools/set_password.py
+   ```
+   Las credenciales se guardan **hasheadas con bcrypt** en la tabla `user`.
+   Para cambiar la contraseña, vuelves a correr el mismo script.
+6. **Instalar como PWA en el celular**: abre la URL en Chrome → menú → *Añadir a pantalla de inicio*.
+
+### Volver a desarrollo local
+
+Sin `DATABASE_URL`, la app usa SQLite (`data/minty.db`). Si esa BD no tiene
+usuarios activos, el guard de login queda desactivado automáticamente. Para
+activarlo localmente:
+
+```powershell
+$env:DATABASE_URL = ""
+python tools/set_password.py   # crea usuario en data/minty.db
+reflex run
+```
+
+---
+
 ## 11. Backups
 
 `minty/services/backup.py` ofrece `hacer_backup()` que copia `data/minty.db` a `backup-YYYYMMDD-HHMMSS.zip`.

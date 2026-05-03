@@ -151,6 +151,24 @@ Los tests cubren cálculos de saldos, generación de recurrencias y reparto de c
 
 ---
 
+## ☁️ Despliegue (Railway)
+
+La app está lista para correr 24/7 en [Railway](https://railway.app) con Postgres y login propio.
+
+**Setup rápido:**
+
+1. *New Project* → *Deploy from GitHub repo* → este repo.
+2. *Add Plugin* → **PostgreSQL** (inyecta `DATABASE_URL` automáticamente).
+3. *Variables*: define `MINTY_HOST=tu-dominio.up.railway.app`. **No** se guardan credenciales en variables de entorno.
+4. *Networking* → *Generate Domain*.
+5. (Una vez) Migra tu BD local: `$env:PG_URL="postgres://..."; python tools/migrar_sqlite_a_postgres.py`.
+6. (Una vez) Crea tu usuario: `railway run python tools/set_password.py` (la contraseña se hashea con **bcrypt** y vive solo en la BD privada).
+7. En el celular: abre la URL en Chrome → menú → *Añadir a pantalla de inicio* (PWA).
+
+Detalles completos en [ARQUITECTURA.md](ARQUITECTURA.md#105-despliegue-en-railway-postgres--auth).
+
+---
+
 ## 🛣️ Roadmap
 
 - [x] Recurrencia avanzada (días / semanas / meses / años)
