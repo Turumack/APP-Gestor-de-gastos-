@@ -56,10 +56,11 @@ def auto_setters(cls):
         target_type = hints.get(name)
 
         def _make(_n, _tt):
-            def _setter(self, value):
+            def _setter(self, value: str):
                 setattr(self, _n, _coerce(value, _tt))
             _setter.__name__ = f"set_{_n}"
             _setter.__qualname__ = f"{cls.__qualname__}.set_{_n}"
+            _setter.__annotations__ = {"value": str, "return": None}
             return _setter
 
         fn = _make(name, target_type)
