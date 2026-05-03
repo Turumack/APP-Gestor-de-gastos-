@@ -27,6 +27,16 @@ class ResumenState(rx.State):
     delta_patrimonio_fmt: str = "$0"
     delta_patrimonio_positivo: bool = True
 
+    # Diagnóstico: por qué Balance ≠ Δ Patrimonio
+    diag_balance_fmt: str = "$0"
+    diag_pagos_tc_fmt: str = "$0"
+    diag_costo_4x1000_fmt: str = "$0"
+    diag_ingresos_sin_caja_fmt: str = "$0"
+    diag_gastos_sin_caja_fmt: str = "$0"
+    diag_delta_esperado_fmt: str = "$0"
+    diag_residual_fmt: str = "$0"
+    diag_cuadra: bool = True
+
     # Gráficos
     gastos_por_categoria: list[dict] = []    # [{nombre, total, color}]
     gastos_por_dia: list[dict] = []          # [{dia, total}] para line chart
@@ -184,6 +194,65 @@ class ResumenState(rx.State):
             signo = "" if delta >= 0 else "-"
             self.delta_patrimonio_fmt = f"{signo}${abs(delta):,.0f}"
             self.delta_patrimonio_positivo = delta >= 0
+
+            # ── Diagnóstico Balance vs Δ Patrimonio ──
+            # Pagos a TC en el periodo (transferencias hacia cualquier caja TC).
+            pagos_tc = 0.0
+            if tc_ids:
+                movs_tc = s.exec(
+                    sqlmodel.select(Movimiento).where(
+                        Movimiento.caja_destino_id.in_(list(tc_ids)),  # type: ignore[attr-defined]
+                        Movimiento.fecha >= ini,
+                        Movimiento.fecha < fin,
+                    )
+                ).all()
+                pagos_tc = sum(float(m.monto or 0) for m in movs_tc)
+
+            # 4×1000 acumulado del periodo (cualquier movimiento).
+            movs_periodo = s.exec(
+                sqlmodel.select(Movimiento).where(
+                    Movimiento.fecha >= ini,
+                    Movimiento.fecha < fin,
+                )
+            ).all()
+            costo_4x1000 = sum(float(m.costo_4x1000 or 0) for m in movs_periodo)
+
+            # Ingresos del periodo sin caja asignada (suman a Balance pero no a Patrimonio).
+            ingresos_sin_caja = 0.0
+            for i in ings:
+                if i.caja_id is None:
+                    ingresos_sin_caja += max(
+                        float(i.ingreso_real_cuenta or 0),
+                        float(calculate_net_income(
+                            i.salario_base or 0,
+                            i.aux_transporte or 0,
+                            i.otros or 0,
+                        )),
+                    )
+
+            # Gastos del periodo sin caja (restan en Balance pero no tocan Patrimonio).
+            gastos_sin_caja = sum(
+                float(g.monto or 0) for g in gts if g.caja_id is None
+            )
+
+        balance = self.total_ingresos - self.total_gastos
+        delta_esperado = (
+            balance - pagos_tc - costo_4x1000 - ingresos_sin_caja + gastos_sin_caja
+        )
+        residual = self.delta_patrimonio - delta_esperado
+
+        def _fmt(v: float) -> str:
+            s_ = "" if v >= 0 else "-"
+            return f"{s_}${abs(v):,.0f}"
+
+        self.diag_balance_fmt = _fmt(balance)
+        self.diag_pagos_tc_fmt = _fmt(pagos_tc)
+        self.diag_costo_4x1000_fmt = _fmt(costo_4x1000)
+        self.diag_ingresos_sin_caja_fmt = _fmt(ingresos_sin_caja)
+        self.diag_gastos_sin_caja_fmt = _fmt(gastos_sin_caja)
+        self.diag_delta_esperado_fmt = _fmt(delta_esperado)
+        self.diag_residual_fmt = _fmt(residual)
+        self.diag_cuadra = abs(residual) < 1.0
 
         # % Ahorro real = (Δ patrimonio + gastos categoría "Ahorro") / ingresos
         ahorro_categoria = por_cat.get("Ahorro", 0.0)

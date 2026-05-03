@@ -231,6 +231,80 @@ def _alerta_pres(a) -> rx.Component:
     )
 
 
+def _diag_row(label: str, value, color: str, icon: str | None = None) -> rx.Component:
+    return rx.hstack(
+        rx.cond(
+            icon is not None,
+            rx.icon(icon or "circle", size=14, color=color),
+            rx.fragment(),
+        ),
+        rx.text(label, size="2", color=T.TEXT_MUTED),
+        rx.spacer(),
+        rx.text(value, size="2", color=color, weight="bold",
+                font_family=T.FONT_MONO),
+        spacing="2", width="100%", align="center",
+        padding="6px 4px",
+    )
+
+
+def _diagnostico_card() -> rx.Component:
+    return glass_card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("calculator", size=18, color=T.VIOLET),
+                rx.heading("Diagnóstico de patrimonio", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                rx.spacer(),
+                rx.cond(
+                    ResumenState.diag_cuadra,
+                    rx.badge("Cuadra", color_scheme="green", variant="soft"),
+                    rx.badge("Revisar", color_scheme="amber", variant="soft"),
+                ),
+                width="100%", align="center",
+            ),
+            rx.text(
+                "De dónde sale tu Δ Patrimonio a partir de Ingresos − Gastos.",
+                size="1", color=T.TEXT_DIM,
+            ),
+            rx.divider(color_scheme="gray"),
+            _diag_row("Balance del periodo (Ingresos − Gastos)",
+                      ResumenState.diag_balance_fmt, T.TEXT, "equal"),
+            _diag_row("− Pagos a tarjeta de crédito",
+                      ResumenState.diag_pagos_tc_fmt, T.PINK, "credit-card"),
+            _diag_row("− Costo 4×1000 (transferencias)",
+                      ResumenState.diag_costo_4x1000_fmt, T.PINK, "minus"),
+            _diag_row("− Ingresos sin caja asignada",
+                      ResumenState.diag_ingresos_sin_caja_fmt, T.AMBER,
+                      "circle-help"),
+            _diag_row("+ Gastos sin caja asignada",
+                      ResumenState.diag_gastos_sin_caja_fmt, T.AMBER,
+                      "circle-help"),
+            rx.divider(color_scheme="gray"),
+            _diag_row("= Δ Patrimonio esperado",
+                      ResumenState.diag_delta_esperado_fmt, T.VIOLET, "wallet"),
+            _diag_row("Δ Patrimonio real (cajas)",
+                      ResumenState.delta_patrimonio_fmt, T.VIOLET, "wallet"),
+            _diag_row("Diferencia residual",
+                      ResumenState.diag_residual_fmt,
+                      rx.cond(ResumenState.diag_cuadra, T.GREEN, T.AMBER),
+                      "scale"),
+            rx.cond(
+                ResumenState.diag_cuadra,
+                rx.fragment(),
+                rx.callout(
+                    "Hay una diferencia que no se explica por los conceptos "
+                    "de arriba. Revisa movimientos manuales, ajustes de saldo "
+                    "inicial o ingresos/gastos con caja TC mal clasificada.",
+                    icon="triangle-alert",
+                    color_scheme="amber",
+                    size="1",
+                ),
+            ),
+            spacing="1", width="100%", align="stretch",
+        ),
+    )
+
+
 def _alertas_card() -> rx.Component:
     return rx.cond(
         ResumenState.alertas_presupuesto.length() > 0,
@@ -270,6 +344,8 @@ def resumen_page() -> rx.Component:
             width="100%", align="start",
         ),
         _metric_grid(),
+        rx.box(height="24px"),
+        _diagnostico_card(),
         rx.box(height="24px"),
         _alertas_card(),
         rx.cond(
