@@ -50,8 +50,8 @@ def auto_setters(cls):
         if name.startswith("_") or name == "is_hydrated":
             continue
         setter_name = f"set_{name}"
-        if setter_name in cls.__dict__:
-            continue
+        # Sobrescribir incluso si Reflex ya generó uno automático con tipo
+        # incompatible (ej. value: float que rompe el handler de <input>).
 
         target_type = hints.get(name)
 

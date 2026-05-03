@@ -29,6 +29,7 @@ _kwargs: dict = dict(
     backend_port=_backend_port,
     telemetry_enabled=False,
     show_built_with_reflex=False,
+    state_auto_setters=False,
     plugins=[rx.plugins.SitemapPlugin(), rx.plugins.TailwindV4Plugin()],
 )
 if _host:
