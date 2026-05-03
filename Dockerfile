@@ -21,8 +21,10 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY . .
+# Crea data/ por si algún import toca SQLite durante el build (sin DATABASE_URL).
+RUN mkdir -p /app/data
 # Inicializa Reflex (descarga deps de Node) y exporta el frontend estático.
-RUN reflex init && reflex export --frontend-only --no-zip
+RUN reflex init --loglevel debug && reflex export --frontend-only --no-zip --loglevel debug
 
 
 # ── Etapa 2: runtime (Caddy + Python backend) ────────────────────────────────
