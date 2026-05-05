@@ -22,10 +22,13 @@ class ConfigState(rx.State):
     msg: str = ""
     msg_kind: str = ""  # "ok" | "warn" | "err" | ""
     procesando: bool = False
+    is_postgres: bool = False
 
     @rx.event
     def load(self):
-        self.backups = listar_backups()
+        from rxconfig import config as _cfg
+        self.is_postgres = (_cfg.db_url or "").startswith("postgresql")
+        self.backups = [] if self.is_postgres else listar_backups()
         self.msg = ""
         self.msg_kind = ""
 
@@ -64,9 +67,15 @@ class ConfigState(rx.State):
     def restaurar(self, nombre: str):
         try:
             restaurar_backup(nombre)
+            # Re-aplicar migraciones por si el backup es de un esquema previo.
+            try:
+                from minty import db as _db
+                _db.ensure_db()
+            except Exception:  # noqa: BLE001
+                log.exception("Fallo re-aplicando migraciones tras restaurar")
             self.msg = (
-                f"✓ Backup '{nombre}' restaurado. "
-                "Reinicia la app para que los cambios tengan efecto."
+                f"✓ Backup '{nombre}' restaurado correctamente. "
+                "Recarga la página (F5) para ver los datos restaurados."
             )
             self.msg_kind = "ok"
         except Exception as e:  # noqa: BLE001

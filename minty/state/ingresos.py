@@ -180,25 +180,75 @@ class IngresosState(rx.State):
             self.simple_msg = "⚠ La descripción es obligatoria."
             return
         with rx.session() as s:
-            s.add(Ingreso(
-                fecha=date.fromisoformat(self.simple_fecha),
-                descripcion=self.simple_desc.strip(),
-                salario_base=self.simple_salario,
-                aux_transporte=self.simple_aux,
-                otros=self.simple_otros,
-                pct_ahorro_objetivo=self.simple_meta,
-                ingreso_real_cuenta=self.simple_real,
-                caja_id=self.simple_caja_id if self.simple_caja_id > 0 else None,
-            ))
-            s.commit()
+            if self.editing_id:
+                row = s.get(Ingreso, self.editing_id)
+                if not row:
+                    self.simple_msg = "⚠ Ingreso no encontrado."
+                    self.editing_id = None
+                    return
+                row.fecha = date.fromisoformat(self.simple_fecha)
+                row.descripcion = self.simple_desc.strip()
+                row.salario_base = self.simple_salario
+                row.aux_transporte = self.simple_aux
+                row.otros = self.simple_otros
+                row.pct_ahorro_objetivo = self.simple_meta
+                row.ingreso_real_cuenta = self.simple_real
+                row.caja_id = self.simple_caja_id if self.simple_caja_id > 0 else None
+                s.add(row)
+                s.commit()
+                self.simple_msg = "✅ Ingreso actualizado."
+                self.editing_id = None
+            else:
+                s.add(Ingreso(
+                    fecha=date.fromisoformat(self.simple_fecha),
+                    descripcion=self.simple_desc.strip(),
+                    salario_base=self.simple_salario,
+                    aux_transporte=self.simple_aux,
+                    otros=self.simple_otros,
+                    pct_ahorro_objetivo=self.simple_meta,
+                    ingreso_real_cuenta=self.simple_real,
+                    caja_id=self.simple_caja_id if self.simple_caja_id > 0 else None,
+                ))
+                s.commit()
+                self.simple_msg = "✅ Ingreso registrado."
         self.simple_desc = ""
         self.simple_salario = 0.0
         self.simple_aux = 0.0
         self.simple_otros = 0.0
         self.simple_real = 0.0
         self.simple_caja_id = 0
-        self.simple_msg = "✅ Ingreso registrado."
         await self.load()
+
+    # ─── Editar (carga datos en formulario simple) ───
+    @rx.event
+    async def editar(self, rid: int):
+        with rx.session() as s:
+            row = s.get(Ingreso, rid)
+            if not row:
+                return
+            self.editing_id = row.id
+            self.simple_desc = row.descripcion or ""
+            self.simple_fecha = row.fecha.isoformat()
+            self.simple_salario = float(row.salario_base or 0)
+            self.simple_aux = float(row.aux_transporte or 0)
+            self.simple_otros = float(row.otros or 0)
+            self.simple_meta = int(row.pct_ahorro_objetivo or 0)
+            self.simple_real = float(row.ingreso_real_cuenta or 0)
+            self.simple_caja_id = int(row.caja_id or 0)
+            self.simple_msg = "✏ Editando ingreso. Guarda para confirmar."
+        # Scroll al formulario.
+        return rx.scroll_to("ingresos-form-top")
+
+    @rx.event
+    def cancelar_edicion(self):
+        self.editing_id = None
+        self.simple_desc = ""
+        self.simple_salario = 0.0
+        self.simple_aux = 0.0
+        self.simple_otros = 0.0
+        self.simple_real = 0.0
+        self.simple_caja_id = 0
+        self.simple_msg = ""
 
     # ─── Guardado CALCULADORA ───
     @rx.event

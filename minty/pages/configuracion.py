@@ -169,12 +169,40 @@ def _seccion_subir() -> rx.Component:
     )
 
 
+def _aviso_postgres() -> rx.Component:
+    return glass_card(
+        rx.hstack(
+            rx.icon("info", size=18, color=T.VIOLET),
+            rx.vstack(
+                rx.heading("Modo producción (Postgres)", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                rx.text(
+                    "La app está conectada a una base de datos remota. Los "
+                    "backups locales (.zip de minty.db) no aplican aquí: usa "
+                    "los snapshots de Railway o pg_dump para respaldar.",
+                    size="2", color=T.TEXT_MUTED,
+                ),
+                spacing="1", align="start",
+            ),
+            spacing="3", align="start", width="100%",
+        ),
+        padding="18px 22px",
+    )
+
+
 def configuracion_page() -> rx.Component:
     return main_layout(
         page_title("Configuración",
                    "Backups, importación y mantenimiento."),
         rx.box(height="16px"),
-        _seccion_backups(),
-        rx.box(height="24px"),
-        _seccion_subir(),
+        rx.cond(
+            ConfigState.is_postgres,
+            _aviso_postgres(),
+            rx.vstack(
+                _seccion_backups(),
+                rx.box(height="24px"),
+                _seccion_subir(),
+                spacing="0", width="100%", align="stretch",
+            ),
+        ),
     )

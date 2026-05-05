@@ -56,6 +56,52 @@ def _fmt_bytes(n: int) -> str:
     return f"{n / (1024 * 1024):.2f} MB"
 
 
+def _liberar_db():
+    """Cierra todas las conexiones SQLAlchemy a la BD para poder
+    sobrescribir el archivo .sqlite en Windows.
+
+    Limpia tanto los engines de Reflex como el engine local de minty.db.
+    Tras llamar a esta función, el siguiente acceso recreará el engine
+    apuntando ya al nuevo archivo restaurado.
+    """
+    # Engine local (migraciones, índices)
+    try:
+        from minty import db as _localdb
+        if getattr(_localdb, "_ENGINE", None) is not None:
+            try:
+                _localdb._ENGINE.dispose()
+            except Exception:  # noqa: BLE001
+                pass
+            _localdb._ENGINE = None
+    except Exception:  # noqa: BLE001
+        log.warning("No se pudo disponer engine local", exc_info=True)
+
+    # Engines de Reflex (sync y async)
+    try:
+        import reflex.model as _rxmodel  # type: ignore
+        for eng in list(getattr(_rxmodel, "_ENGINE", {}).values()):
+            try:
+                eng.dispose()
+            except Exception:  # noqa: BLE001
+                pass
+        if hasattr(_rxmodel, "_ENGINE"):
+            _rxmodel._ENGINE.clear()
+        for eng in list(getattr(_rxmodel, "_ASYNC_ENGINE", {}).values()):
+            try:
+                # AsyncEngine.dispose es coroutine; en práctica sync_close basta
+                eng.sync_engine.dispose()
+            except Exception:  # noqa: BLE001
+                pass
+        if hasattr(_rxmodel, "_ASYNC_ENGINE"):
+            _rxmodel._ASYNC_ENGINE.clear()
+    except Exception:  # noqa: BLE001
+        log.warning("No se pudo disponer engines de Reflex", exc_info=True)
+
+    # GC para soltar handles colgantes en Windows
+    import gc
+    gc.collect()
+
+
 def restaurar_backup(nombre_zip: str) -> bool:
     """Restaura la BD desde un backup existente. Crea un backup de
     seguridad de la BD actual antes de sobrescribirla.
@@ -77,11 +123,47 @@ def restaurar_backup(nombre_zip: str) -> bool:
         except Exception as e:  # no abortar si falla la copia previa
             log.warning("No se pudo crear backup pre-restore: %s", e)
 
+    # Validar contenido del zip antes de tocar nada.
     with zipfile.ZipFile(src, "r") as zf:
         nombres = zf.namelist()
         if "minty.db" not in nombres:
             raise ValueError(f"El zip no contiene 'minty.db': {nombre_zip}")
-        zf.extract("minty.db", path=DATA_DIR)
+
+    # Liberar conexiones SQLAlchemy para poder sobrescribir el archivo en Windows.
+    _liberar_db()
+
+    # Extraer a temp y luego mover atómicamente sobre minty.db. Eliminar
+    # también los archivos auxiliares -wal y -shm de SQLite, que de lo
+    # contrario contendrían transacciones del archivo viejo.
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_path = DATA_DIR / "minty.db.restore.tmp"
+    with zipfile.ZipFile(src, "r") as zf:
+        with zf.open("minty.db") as fsrc, open(tmp_path, "wb") as fdst:
+            shutil.copyfileobj(fsrc, fdst)
+
+    for aux in (DATA_DIR / "minty.db-wal", DATA_DIR / "minty.db-shm"):
+        try:
+            aux.unlink(missing_ok=True)
+        except OSError:
+            log.warning("No se pudo eliminar archivo auxiliar: %s", aux)
+
+    try:
+        os.replace(tmp_path, DB_PATH)
+    except OSError as e:
+        # Reintento: si algún handle quedó colgando, forzar otro GC y volver.
+        import gc
+        gc.collect()
+        try:
+            os.replace(tmp_path, DB_PATH)
+        except OSError:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise RuntimeError(
+                "No se pudo sobrescribir minty.db (archivo en uso). "
+                "Reinicia la aplicación e intenta de nuevo."
+            ) from e
     return True
 
 

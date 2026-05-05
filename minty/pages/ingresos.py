@@ -16,7 +16,25 @@ from minty.state import PeriodoState
 def _tab_simple() -> rx.Component:
     return glass_card(
         rx.vstack(
-            rx.heading("Registro rápido", size="5", font_family=T.FONT_HEAD, color=T.TEXT),
+            rx.hstack(
+                rx.heading(
+                    rx.cond(
+                        IngresosState.editing_id,
+                        "Editar ingreso",
+                        "Registro rápido",
+                    ),
+                    size="5", font_family=T.FONT_HEAD, color=T.TEXT,
+                    id="ingresos-form-top",
+                ),
+                rx.spacer(),
+                rx.cond(
+                    IngresosState.editing_id,
+                    rx.badge("Modo edición", color_scheme="amber",
+                             variant="soft"),
+                    rx.fragment(),
+                ),
+                width="100%", align="center",
+            ),
             rx.text("Para ingresos sin cálculo de horas extra.", size="2", color=T.TEXT_MUTED),
             rx.grid(
                 text_field("Descripción", IngresosState.simple_desc,
@@ -74,6 +92,13 @@ def _tab_simple() -> rx.Component:
             ),
             primary_button("Guardar ingreso", IngresosState.guardar_simple,
                            icon="save", width="100%"),
+            rx.cond(
+                IngresosState.editing_id,
+                ghost_button("Cancelar edición",
+                             IngresosState.cancelar_edicion,
+                             icon="x", width="100%"),
+                rx.fragment(),
+            ),
             rx.cond(
                 IngresosState.simple_msg != "",
                 rx.text(IngresosState.simple_msg, size="2", color=T.GREEN),
@@ -318,6 +343,16 @@ def _row_ingreso(r) -> rx.Component:
                     rx.text("Real: sin registrar", size="1", color=T.TEXT_DIM, style={"font_style": "italic"}),
                 ),
                 spacing="1", align="end",
+            ),
+            rx.button(
+                rx.icon("pencil", size=14),
+                on_click=IngresosState.editar(r.id),
+                variant="ghost",
+                color=T.VIOLET,
+                cursor="pointer",
+                size="1",
+                title="Editar ingreso",
+                _hover={"background": f"{T.VIOLET}15"},
             ),
             rx.button(
                 rx.icon("trash-2", size=14),
