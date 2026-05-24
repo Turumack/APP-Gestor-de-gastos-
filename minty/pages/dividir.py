@@ -319,7 +319,7 @@ def _result_card() -> rx.Component:
                                icon="wallet"),
                 ghost_button("Guardar factura",
                              DividirState.guardar_factura, icon="save"),
-                ghost_button("Nueva cuenta", DividirState.reset, icon="plus"),
+                ghost_button("Nueva cuenta", DividirState.nueva_factura, icon="plus"),
                 spacing="2", justify="end", width="100%",
             ),
             spacing="3", align="stretch", width="100%",

@@ -257,7 +257,7 @@ class DividirState(rx.State):
         self.items = items
 
     @rx.event
-    def reset(self):
+    def nueva_factura(self):
         self.nombre = ""
         self.fecha = date.today().isoformat()
         self.notas = ""
@@ -362,7 +362,7 @@ class DividirState(rx.State):
                 s.delete(sp)
                 s.commit()
         if self.editing_id == sid:
-            self.reset()
+            self.nueva_factura()
         self.load()
 
     # ── Registrar mi parte como Gasto ───────────────────────
