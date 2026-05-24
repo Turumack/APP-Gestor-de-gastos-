@@ -10,6 +10,7 @@ from minty.state.ajustes import AjustesState
 
 
 def _metric(title: str, value, icon: str, gradient, accent=None) -> rx.Component:
+    color = accent if accent is not None else T.TEXT
     return glass_card(
         rx.hstack(
             rx.box(
@@ -22,7 +23,7 @@ def _metric(title: str, value, icon: str, gradient, accent=None) -> rx.Component
                 rx.text(title, size="2", color=T.TEXT_MUTED),
                 rx.heading(value, size="6",
                            font_family=T.FONT_HEAD,
-                           color=accent or T.TEXT),
+                           color=color),
                 spacing="0", align="start",
             ),
             spacing="3", align="center", width="100%",
@@ -50,7 +51,7 @@ def _form() -> rx.Component:
         glass_card(
             rx.vstack(
                 rx.hstack(
-                    rx.icon("sliders", size=18, color=T.VIOLET),
+                    rx.icon("sliders-horizontal", size=18, color=T.VIOLET),
                     rx.heading(
                         rx.cond(AjustesState.form_editing_id,
                                 "Editar ajuste", "Nuevo ajuste"),
