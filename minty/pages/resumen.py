@@ -279,6 +279,8 @@ def _diagnostico_card() -> rx.Component:
             _diag_row("+ Gastos sin caja asignada",
                       ResumenState.diag_gastos_sin_caja_fmt, T.AMBER,
                       "circle-help"),
+            _diag_row("± Ajustes manuales de caja",
+                      ResumenState.diag_ajustes_fmt, T.VIOLET, "sliders"),
             rx.divider(color_scheme="gray"),
             _diag_row("= Δ Patrimonio esperado",
                       ResumenState.diag_delta_esperado_fmt, T.VIOLET, "wallet"),

@@ -80,6 +80,9 @@ _INDEXES = [
     ("idx_presupuesto_periodo",    "presupuesto",  "anio, mes"),
     ("idx_gasto_compra_id",        "gasto",        "compra_id"),
     ("idx_gasto_meta_id",          "gasto",        "meta_id"),
+    ("idx_ajuste_fecha",           "ajuste",       "fecha"),
+    ("idx_ajuste_caja_id",         "ajuste",       "caja_id"),
+    ("idx_splitcuenta_fecha",      "splitcuenta",  "fecha"),
 ]
 
 

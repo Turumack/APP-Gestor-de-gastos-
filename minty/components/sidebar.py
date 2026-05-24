@@ -133,6 +133,7 @@ def sidebar() -> rx.Component:
             _section_label("MOVIMIENTOS"),
             _nav_item("Ingresos", "trending-up", "/ingresos", route),
             _nav_item("Gastos", "trending-down", "/gastos", route),
+            _nav_item("Dividir cuenta", "users", "/dividir", route),
             _nav_item("Listas", "list", "/compras", route),
 
             rx.spacer(height="20px"),
@@ -140,6 +141,7 @@ def sidebar() -> rx.Component:
             _nav_item("Cajas", "wallet", "/cajas", route),
             _nav_item("Presupuestos", "piggy-bank", "/presupuestos", route),
             _nav_item("Metas", "target", "/metas", route),
+            _nav_item("Ajustes", "sliders", "/ajustes", route),
             _nav_item("Inversiones", "landmark", "/inversiones", route),
             _nav_item("Baúl", "archive", "/baul", route),
 

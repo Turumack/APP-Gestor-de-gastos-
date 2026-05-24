@@ -5,7 +5,7 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from minty.models import Caja, Movimiento, Gasto, Ingreso
+from minty.models import Caja, Movimiento, Gasto, Ingreso, Ajuste
 from minty.finance import (
     TIPOS_CAJA,
     TIPO_CAJA_LABEL,
@@ -194,6 +194,13 @@ class CajasState(rx.State):
             for m in movs:
                 saldos[m.caja_origen_id] = saldos.get(m.caja_origen_id, 0) - m.monto - (m.costo_4x1000 or 0)
                 saldos[m.caja_destino_id] = saldos.get(m.caja_destino_id, 0) + m.monto
+
+            # Ajustes manuales (suman o restan saldo sin 4×1000).
+            ajustes = s.exec(
+                sqlmodel.select(Ajuste).where(Ajuste.fecha < fin)
+            ).all()
+            for aj in ajustes:
+                saldos[aj.caja_id] = saldos.get(aj.caja_id, 0) + float(aj.monto or 0)
 
             by_id = {c.id: c for c in cajas}
 

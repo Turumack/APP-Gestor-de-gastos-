@@ -3,7 +3,7 @@ from datetime import date
 import reflex as rx
 import sqlmodel
 
-from minty.models import Ingreso, Gasto, Presupuesto, Caja, Movimiento
+from minty.models import Ingreso, Gasto, Presupuesto, Caja, Movimiento, Ajuste
 from minty.finance import calculate_net_income, COLOR_CATEGORIA
 from minty.state.periodo import PeriodoState
 
@@ -33,6 +33,7 @@ class ResumenState(rx.State):
     diag_costo_4x1000_fmt: str = "$0"
     diag_ingresos_sin_caja_fmt: str = "$0"
     diag_gastos_sin_caja_fmt: str = "$0"
+    diag_ajustes_fmt: str = "$0"
     diag_delta_esperado_fmt: str = "$0"
     diag_residual_fmt: str = "$0"
     diag_cuadra: bool = True
@@ -184,6 +185,13 @@ class ResumenState(rx.State):
                         float(m.monto or 0) + float(m.costo_4x1000 or 0)
                         for m in movs_out
                     )
+                    # Ajustes manuales hasta esta fecha (firmados).
+                    ajs_c = s.exec(
+                        sqlmodel.select(Ajuste).where(
+                            Ajuste.caja_id == c.id, Ajuste.fecha < fecha,
+                        )
+                    ).all()
+                    saldo += sum(float(a.monto or 0) for a in ajs_c)
                     total += saldo
                 return total
 
@@ -235,9 +243,19 @@ class ResumenState(rx.State):
                 float(g.monto or 0) for g in gts if g.caja_id is None
             )
 
+            # Ajustes manuales del periodo (suman/restan al patrimonio
+            # sin pasar por ingresos/gastos).
+            ajs_periodo = s.exec(
+                sqlmodel.select(Ajuste).where(
+                    Ajuste.fecha >= ini, Ajuste.fecha < fin,
+                )
+            ).all()
+            ajustes_total = sum(float(a.monto or 0) for a in ajs_periodo)
+
         balance = self.total_ingresos - self.total_gastos
         delta_esperado = (
-            balance - pagos_tc - costo_4x1000 - ingresos_sin_caja + gastos_sin_caja
+            balance - pagos_tc - costo_4x1000 - ingresos_sin_caja
+            + gastos_sin_caja + ajustes_total
         )
         residual = self.delta_patrimonio - delta_esperado
 
@@ -250,6 +268,7 @@ class ResumenState(rx.State):
         self.diag_costo_4x1000_fmt = _fmt(costo_4x1000)
         self.diag_ingresos_sin_caja_fmt = _fmt(ingresos_sin_caja)
         self.diag_gastos_sin_caja_fmt = _fmt(gastos_sin_caja)
+        self.diag_ajustes_fmt = _fmt(ajustes_total)
         self.diag_delta_esperado_fmt = _fmt(delta_esperado)
         self.diag_residual_fmt = _fmt(residual)
         self.diag_cuadra = abs(residual) < 1.0

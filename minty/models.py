@@ -178,3 +178,36 @@ class Meta(rx.Model, table=True):
     notas: str = ""
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
+
+class Ajuste(rx.Model, table=True):
+    """Ajuste manual de saldo de una caja (suma o resta sin 4×1000).
+
+    Sirve para corregir desfases entre el saldo de la app y el saldo real
+    cuando se olvida registrar un movimiento. NO es ingreso ni gasto:
+    afecta directamente al patrimonio sin contar en los totales del mes.
+    """
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    fecha: _date
+    caja_id: int = sqlmodel.Field(foreign_key="caja.id")
+    monto: float = 0.0          # firmado: + suma al saldo, − resta
+    descripcion: str = ""
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+
+
+class SplitCuenta(rx.Model, table=True):
+    """Factura/cuenta compartida con varias personas y su desglose.
+
+    Persiste el cálculo completo en ``payload`` (JSON) para poder reabrir
+    la división más adelante. Si el usuario optó por registrar su parte
+    como Gasto real, ``gasto_id`` apunta al gasto creado.
+    """
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    fecha: _date
+    nombre: str = ""
+    notas: str = ""
+    total: float = 0.0
+    mi_parte: float = 0.0
+    payload: str = ""           # JSON con participantes e items
+    gasto_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="gasto.id")
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+
