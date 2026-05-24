@@ -34,6 +34,13 @@ class ParticipanteRow(BaseModel):
     paga: float
 
 
+class ItemRow(BaseModel):
+    nombre: str = ""
+    monto: float = 0.0
+    incluidos: list[int] = []
+    monto_str: str = "0"
+
+
 @auto_setters
 class DividirState(rx.State):
     # Cabecera factura
@@ -45,8 +52,8 @@ class DividirState(rx.State):
     participantes: list[str] = ["Yo"]
     yo_idx: int = 0
 
-    # Items: cada uno {nombre, monto, incluidos: list[int]}
-    items: list[dict] = []
+    # Items: cada uno con nombre, monto e incluidos
+    items: list[ItemRow] = []
 
     # Inputs para añadir cosas
     nuevo_participante: str = ""
@@ -71,7 +78,7 @@ class DividirState(rx.State):
     # ── Computed ─────────────────────────────────────────────
     @rx.var
     def total(self) -> float:
-        return sum(float(i.get("monto", 0) or 0) for i in self.items)
+        return sum(float(i.monto or 0) for i in self.items)
 
     @rx.var
     def total_fmt(self) -> str:
@@ -84,11 +91,11 @@ class DividirState(rx.State):
             return []
         acc = [0.0] * n_part
         for item in self.items:
-            inc = item.get("incluidos") or []
+            inc = list(item.incluidos or [])
             inc_validos = [i for i in inc if 0 <= int(i) < n_part]
             if not inc_validos:
                 continue
-            share = float(item.get("monto", 0) or 0) / len(inc_validos)
+            share = float(item.monto or 0) / len(inc_validos)
             for i in inc_validos:
                 acc[int(i)] += share
         out: list[ParticipanteRow] = []
@@ -107,12 +114,12 @@ class DividirState(rx.State):
             return 0.0
         acc = 0.0
         for item in self.items:
-            inc = [int(i) for i in (item.get("incluidos") or [])
+            inc = [int(i) for i in (item.incluidos or [])
                    if 0 <= int(i) < n_part]
             if not inc:
                 continue
             if self.yo_idx in inc:
-                acc += float(item.get("monto", 0) or 0) / len(inc)
+                acc += float(item.monto or 0) / len(inc)
         return acc
 
     @rx.var
@@ -181,14 +188,18 @@ class DividirState(rx.State):
             new_yo = 0
         elif idx < self.yo_idx:
             new_yo = self.yo_idx - 1
-        new_items = []
+        new_items: list[ItemRow] = []
         for it in self.items:
-            inc_old = [int(i) for i in (it.get("incluidos") or [])]
+            inc_old = [int(i) for i in (it.incluidos or [])]
             inc_new = [
                 (i if i < idx else i - 1)
                 for i in inc_old if i != idx
             ]
-            new_items.append({**it, "incluidos": inc_new})
+            new_items.append(ItemRow(
+                nombre=it.nombre, monto=it.monto,
+                incluidos=inc_new,
+                monto_str=f"{it.monto:.0f}",
+            ))
         self.participantes = new_list
         self.yo_idx = new_yo
         self.items = new_items
@@ -208,11 +219,12 @@ class DividirState(rx.State):
             return
         # Por defecto incluye a todos los participantes
         incluidos = list(range(len(self.participantes)))
-        self.items = self.items + [{
-            "nombre": nombre,
-            "monto": monto,
-            "incluidos": incluidos,
-        }]
+        self.items = self.items + [ItemRow(
+            nombre=nombre,
+            monto=monto,
+            incluidos=incluidos,
+            monto_str=f"{monto:.0f}",
+        )]
         self.nuevo_item_nombre = ""
         self.nuevo_item_monto = 0.0
         self.msg = ""
@@ -227,8 +239,8 @@ class DividirState(rx.State):
     def set_item_nombre(self, idx: int, val: str):
         if not (0 <= idx < len(self.items)):
             return
-        items = [dict(it) for it in self.items]
-        items[idx]["nombre"] = val
+        items = [it.model_copy() for it in self.items]
+        items[idx].nombre = val
         self.items = items
 
     @rx.event
@@ -239,21 +251,22 @@ class DividirState(rx.State):
             v = float(val) if val else 0.0
         except (TypeError, ValueError):
             v = 0.0
-        items = [dict(it) for it in self.items]
-        items[idx]["monto"] = v
+        items = [it.model_copy() for it in self.items]
+        items[idx].monto = v
+        items[idx].monto_str = val if val else "0"
         self.items = items
 
     @rx.event
     def toggle_incluido(self, item_idx: int, part_idx: int):
         if not (0 <= item_idx < len(self.items)):
             return
-        items = [dict(it) for it in self.items]
-        inc = [int(i) for i in (items[item_idx].get("incluidos") or [])]
+        items = [it.model_copy() for it in self.items]
+        inc = [int(i) for i in (items[item_idx].incluidos or [])]
         if part_idx in inc:
             inc = [i for i in inc if i != part_idx]
         else:
             inc = sorted(inc + [part_idx])
-        items[item_idx]["incluidos"] = inc
+        items[item_idx].incluidos = inc
         self.items = items
 
     @rx.event
@@ -278,9 +291,9 @@ class DividirState(rx.State):
             "participantes": list(self.participantes),
             "yo_idx": int(self.yo_idx),
             "items": [
-                {"nombre": str(i.get("nombre", "")),
-                 "monto": float(i.get("monto", 0) or 0),
-                 "incluidos": [int(x) for x in (i.get("incluidos") or [])]}
+                {"nombre": str(i.nombre or ""),
+                 "monto": float(i.monto or 0),
+                 "incluidos": [int(x) for x in (i.incluidos or [])]}
                 for i in self.items
             ],
             "notas": self.notas,
@@ -347,9 +360,12 @@ class DividirState(rx.State):
             self.participantes = list(data.get("participantes") or ["Yo"])
             self.yo_idx = int(data.get("yo_idx", 0))
             self.items = [
-                {"nombre": str(i.get("nombre", "")),
-                 "monto": float(i.get("monto", 0) or 0),
-                 "incluidos": [int(x) for x in (i.get("incluidos") or [])]}
+                ItemRow(
+                    nombre=str(i.get("nombre", "")),
+                    monto=float(i.get("monto", 0) or 0),
+                    incluidos=[int(x) for x in (i.get("incluidos") or [])],
+                    monto_str=f"{float(i.get('monto', 0) or 0):.0f}",
+                )
                 for i in (data.get("items") or [])
             ]
         self.msg = f"📂 Cargada factura «{self.nombre}»."

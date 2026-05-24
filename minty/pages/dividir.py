@@ -140,7 +140,7 @@ def _item_card(idx_item, item) -> rx.Component:
         rx.vstack(
             rx.hstack(
                 rx.input(
-                    value=item["nombre"],
+                    value=item.nombre,
                     on_change=lambda v: DividirState.set_item_nombre(idx_item, v),
                     placeholder="Concepto",
                     background="rgba(255,255,255,0.04)",
@@ -150,7 +150,7 @@ def _item_card(idx_item, item) -> rx.Component:
                     height="36px", flex="2",
                 ),
                 rx.input(
-                    value=item["monto"].to_string(),
+                    value=item.monto_str,
                     on_change=lambda v: DividirState.set_item_monto(idx_item, v),
                     placeholder="0",
                     type="number", step=100,
@@ -174,7 +174,7 @@ def _item_card(idx_item, item) -> rx.Component:
                 rx.foreach(
                     DividirState.por_persona,
                     lambda part: _checkbox_participante(
-                        idx_item, item["incluidos"], part),
+                        idx_item, item.incluidos, part),
                 ),
                 wrap="wrap", gap="12px",
             ),
