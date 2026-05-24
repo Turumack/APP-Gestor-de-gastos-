@@ -186,7 +186,7 @@ def sidebar() -> rx.Component:
                 SidebarState.collapsed,
                 rx.fragment(),
                 rx.box(
-                    rx.text("v2.6 · Online", size="1", color=T.TEXT_DIM, text_align="center"),
+                    rx.text("v2.7 · Online", size="1", color=T.TEXT_DIM, text_align="center"),
                     padding="12px",
                     width="100%",
                 ),
