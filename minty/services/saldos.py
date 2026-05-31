@@ -219,11 +219,15 @@ def compute_pairwise_debts(
     yo_emoji: str = "\U0001F642",
     yo_nombre: str = "Yo",
 ) -> list[PairDebtRow]:
-    """Para cada factura, atribuye proporcionalmente lo que cada deudor
-    le debe a cada acreedor, y luego suma globalmente y netea por pares.
+    """Genera las deudas par-a-par usando la regla simple:
+    el pagador de la factura es el único acreedor central.
 
-    Resultado: filas concretas «X le debe a Y: $Z» entre cualquier par,
-    incluyendo otro→otro.
+    - Si una persona pagó MENOS que su parte → debe la diferencia al pagador.
+    - Si pagó MÁS que su parte (sobrante) → el pagador le debe ese sobrante.
+    - El neteo entre pares se hace al final (si A→B $20k y B→A $25k → B→A $5k).
+    - Si la factura no tiene pagador marcado, se usa como pagador implícito
+      al participante que más pagó (mejor heurística disponible).
+    - Participantes manuales (sin persona_id) se descartan del cálculo.
     """
     info_personas: dict[int, dict] = {
         (p.id or 0): {
@@ -245,30 +249,78 @@ def compute_pairwise_debts(
             data = json.loads(sp.payload or "{}")
         except json.JSONDecodeError:
             continue
-        # balances de la factura (uno por participante)
-        bals = _extraer_balances(data)
-        # Convertir a pid efectivo (Yo o pid>0); descartar manuales.
-        agg_factura: dict[int, float] = {}
-        for pid, bal, es_yo in bals:
-            if es_yo:
-                pid_eff = YO_PID
-            elif pid > 0:
-                pid_eff = pid
-            else:
-                continue
-            agg_factura[pid_eff] = agg_factura.get(pid_eff, 0.0) + bal
 
-        deudores = [(p, -b) for p, b in agg_factura.items() if b < -0.01]
-        acreedores = [(p, b) for p, b in agg_factura.items() if b > 0.01]
-        total_acr = sum(b for _, b in acreedores)
-        if total_acr < 0.01 or not deudores:
+        parts = data.get("participantes") or []
+        n = len(parts) if isinstance(parts, list) else 0
+        if n == 0:
             continue
-        for d_pid, monto_debe in deudores:
-            for a_pid, b in acreedores:
-                share = monto_debe * (b / total_acr)
-                if share < 0.01:
-                    continue
-                pair[(d_pid, a_pid)] = pair.get((d_pid, a_pid), 0.0) + share
+        yo_idx = int(data.get("yo_idx", 0))
+        pagador_idx = int(data.get("pagador_idx", -1))
+
+        # pids efectivos por participante (YO_PID para "Yo")
+        pids_eff: list[int] = []
+        for i, p in enumerate(parts):
+            if i == yo_idx:
+                pids_eff.append(YO_PID)
+                continue
+            if isinstance(p, dict):
+                pid = int(p.get("persona_id", 0) or 0)
+            else:
+                pid = 0
+            pids_eff.append(pid if pid > 0 else 0)
+
+        # Pagos y partes
+        pagos = [float(x or 0) for x in (data.get("pagos") or [])]
+        while len(pagos) < n:
+            pagos.append(0.0)
+        partes = [0.0] * n
+        total = 0.0
+        for it in (data.get("items") or []):
+            monto = float(it.get("monto", 0) or 0)
+            total += monto
+            inc = [int(x) for x in (it.get("incluidos") or [])
+                   if 0 <= int(x) < n]
+            if not inc:
+                continue
+            share = monto / len(inc)
+            for i in inc:
+                partes[i] += share
+
+        # Regla del pagador cubre faltante
+        if 0 <= pagador_idx < n:
+            falta = total - sum(pagos)
+            if abs(falta) > 0.5:
+                pagos[pagador_idx] += falta
+        else:
+            # Sin pagador marcado: usar al que más pagó como pagador implícito
+            if not pagos or max(pagos) < 0.5:
+                continue
+            pagador_idx = pagos.index(max(pagos))
+
+        pid_pag = pids_eff[pagador_idx]
+        if pid_pag == 0:
+            # Pagador es manual (no en libreta): no podemos atribuir.
+            continue
+
+        for i in range(n):
+            if i == pagador_idx:
+                continue
+            pid_i = pids_eff[i]
+            if pid_i == 0:
+                continue  # participante manual, ignorar
+            if pid_i == pid_pag:
+                continue  # mismo pid (no debería pasar)
+            delta = pagos[i] - partes[i]
+            if delta < -0.5:
+                # i pagó menos que su parte → debe la diferencia al pagador
+                monto = -delta
+                pair[(pid_i, pid_pag)] = pair.get(
+                    (pid_i, pid_pag), 0.0) + monto
+            elif delta > 0.5:
+                # i pagó de más → el pagador le debe ese sobrante
+                monto = delta
+                pair[(pid_pag, pid_i)] = pair.get(
+                    (pid_pag, pid_i), 0.0) + monto
 
     # Netear (A→B) contra (B→A)
     netos: dict[tuple[int, int], float] = {}
