@@ -802,6 +802,11 @@ def _saldo_global_row(p) -> rx.Component:
             flex_shrink="0",
         ),
         rx.text(p.nombre, size="2", color=T.TEXT, weight="medium"),
+        rx.cond(
+            p.es_yo,
+            rx.badge("Tú", color_scheme="violet", variant="soft"),
+            rx.fragment(),
+        ),
         rx.spacer(),
         rx.text(p.balance_fmt, size="2", font_family=T.FONT_MONO,
                 weight="bold",
@@ -813,13 +818,16 @@ def _saldo_global_row(p) -> rx.Component:
                 )),
         rx.match(
             p.balance_signo,
-            ("debe", rx.badge("Te debe", color_scheme="red", variant="soft")),
-            ("recibe", rx.badge("Le debes", color_scheme="green",
+            ("debe", rx.badge("Deudor", color_scheme="red", variant="soft")),
+            ("recibe", rx.badge("Acreedor", color_scheme="green",
                                 variant="soft")),
             rx.badge("Saldado", color_scheme="gray", variant="soft"),
         ),
         spacing="2", align="center", width="100%",
         padding="10px 12px",
+        background=rx.cond(p.es_yo,
+                           "rgba(167,139,250,0.06)",
+                           "transparent"),
         border_bottom=f"1px solid {T.BORDER_SOFT}",
     )
 
@@ -864,8 +872,8 @@ def _saldos_globales_card() -> rx.Component:
                 spacing="2", align="center",
             ),
             rx.text(
-                "Cruce de TODAS las facturas guardadas con personas de tu "
-                "libreta. Positivo = tú pagaste de más (te deben).",
+                "Cruce de TODAS las facturas guardadas. Incluye a todas "
+                "las personas (también a ti). Verde = acreedor, rojo = deudor.",
                 size="2", color=T.TEXT_MUTED,
             ),
             rx.cond(

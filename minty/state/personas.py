@@ -4,8 +4,11 @@ import reflex as rx
 import sqlmodel
 from pydantic import BaseModel
 
-from minty.models import Persona
+from minty.models import Persona, SplitCuenta
 from minty.state._autosetters import auto_setters
+from minty.services.saldos import (
+    compute_saldos_globales, SaldoGlobalRow, TransferGlobalRow,
+)
 
 
 PALETA = [
@@ -30,6 +33,10 @@ class PersonaCard(BaseModel):
 class PersonasState(rx.State):
     rows: list[PersonaCard] = []
 
+    # Saldos acumulados entre todas las facturas
+    saldos_globales: list[SaldoGlobalRow] = []
+    transferencias_globales: list[TransferGlobalRow] = []
+
     # Form
     form_open: bool = False
     form_editing_id: Optional[int] = None
@@ -47,6 +54,7 @@ class PersonasState(rx.State):
                     sqlmodel.desc(Persona.activa), Persona.nombre
                 )
             ).all()
+            splits = s.exec(sqlmodel.select(SplitCuenta)).all()
         self.rows = [
             PersonaCard(
                 id=p.id or 0, nombre=p.nombre or "(sin nombre)",
@@ -57,6 +65,9 @@ class PersonasState(rx.State):
             )
             for p in personas
         ]
+        saldos, transfers = compute_saldos_globales(splits, personas)
+        self.saldos_globales = saldos
+        self.transferencias_globales = transfers
 
     @rx.event
     def toggle_form(self):

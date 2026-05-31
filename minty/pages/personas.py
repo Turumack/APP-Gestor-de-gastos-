@@ -145,6 +145,130 @@ def _persona_card(p) -> rx.Component:
     )
 
 
+def _saldo_row(p) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="26px", height="26px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.nombre, size="2", color=T.TEXT, weight="medium"),
+        rx.cond(
+            p.es_yo,
+            rx.badge("Tú", color_scheme="violet", variant="soft"),
+            rx.fragment(),
+        ),
+        rx.spacer(),
+        rx.text(p.balance_fmt, size="2", font_family=T.FONT_MONO,
+                weight="bold",
+                color=rx.match(
+                    p.balance_signo,
+                    ("debe", T.RED),
+                    ("recibe", T.GREEN),
+                    T.TEXT_DIM,
+                )),
+        rx.match(
+            p.balance_signo,
+            ("debe", rx.badge("Deudor", color_scheme="red", variant="soft")),
+            ("recibe", rx.badge("Acreedor", color_scheme="green",
+                                variant="soft")),
+            rx.badge("Saldado", color_scheme="gray", variant="soft"),
+        ),
+        spacing="2", align="center", width="100%",
+        padding="10px 12px",
+        background=rx.cond(p.es_yo,
+                           "rgba(167,139,250,0.06)",
+                           "transparent"),
+        border_bottom=f"1px solid {T.BORDER_SOFT}",
+    )
+
+
+def _transfer_row(t) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(t.de_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.de_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.de_nombre, size="2", color=T.TEXT),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.text(t.monto_fmt, size="2", color=T.VIOLET,
+                font_family=T.FONT_MONO, weight="bold"),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.box(
+            rx.text(t.a_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.a_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.a_nombre, size="2", color=T.TEXT),
+        spacing="2", align="center",
+        padding="8px 12px",
+        background="rgba(255,255,255,0.03)",
+        border=f"1px solid {T.BORDER_SOFT}",
+        border_radius=T.RADIUS_SM,
+    )
+
+
+def _saldos_card() -> rx.Component:
+    return glass_card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("scale", size=18, color=T.VIOLET),
+                rx.heading("Saldos acumulados", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                spacing="2", align="center",
+            ),
+            rx.text(
+                "Cruce de TODAS las facturas guardadas. Positivo (verde) = "
+                "le deben / acreedor; negativo (rojo) = debe / deudor.",
+                size="2", color=T.TEXT_MUTED,
+            ),
+            rx.cond(
+                PersonasState.saldos_globales.length() > 0,
+                rx.vstack(
+                    rx.foreach(PersonasState.saldos_globales, _saldo_row),
+                    spacing="0", align="stretch", width="100%",
+                ),
+                rx.vstack(
+                    rx.icon("inbox", size=24, color=T.TEXT_DIM),
+                    rx.text("Aún no hay facturas guardadas para cruzar.",
+                            size="2", color=T.TEXT_MUTED),
+                    spacing="2", align="center", padding="20px",
+                ),
+            ),
+            rx.cond(
+                PersonasState.transferencias_globales.length() > 0,
+                rx.vstack(
+                    rx.divider(color_scheme="gray"),
+                    rx.hstack(
+                        rx.icon("arrow-right-left", size=16, color=T.VIOLET),
+                        rx.heading("Liquidación sugerida", size="3",
+                                   font_family=T.FONT_HEAD, color=T.TEXT),
+                        spacing="2", align="center",
+                    ),
+                    rx.text(
+                        "Mínimo número de transferencias para saldar todo.",
+                        size="1", color=T.TEXT_DIM,
+                    ),
+                    rx.foreach(PersonasState.transferencias_globales,
+                               _transfer_row),
+                    spacing="2", align="stretch", width="100%",
+                ),
+                rx.fragment(),
+            ),
+            spacing="3", align="stretch", width="100%",
+        ),
+        padding="20px",
+    )
+
+
 def personas_page() -> rx.Component:
     header = rx.hstack(
         page_title("Personas",
@@ -157,6 +281,7 @@ def personas_page() -> rx.Component:
         rx.vstack(
             header,
             _form(),
+            _saldos_card(),
             rx.cond(
                 PersonasState.rows.length() > 0,
                 rx.grid(
