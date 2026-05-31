@@ -603,18 +603,11 @@ class DividirState(rx.State):
         new_str[idx] = val if val else "0"
         self.pagos = new_pagos
         self.pagos_str = new_str
-        # Si edita manualmente los montos, deja de ser un pago único.
-        if self.pagador_idx >= 0:
-            n_no_cero = sum(1 for p in new_pagos if abs(p) > 0.01)
-            if n_no_cero != 1 or (
-                0 <= self.pagador_idx < len(new_pagos)
-                and abs(new_pagos[self.pagador_idx] - float(self.total)) > 0.5
-            ):
-                self.pagador_idx = -1
 
     @rx.event
     def set_pagador(self, idx: int):
-        """Marca un único pagador y le asigna el total de la factura."""
+        """Marca quién hizo físicamente el pago de la cuenta. Es solo
+        metadata: NO altera lo que cada uno aportó (los inputs de pagos)."""
         if not (0 <= idx < len(self.participantes)):
             return
         # Toggle: clic en el mismo pagador lo desmarca.
@@ -622,12 +615,6 @@ class DividirState(rx.State):
             self.pagador_idx = -1
             return
         self.pagador_idx = idx
-        total = float(self.total)
-        new_pagos = [0.0 for _ in self.pagos]
-        if 0 <= idx < len(new_pagos):
-            new_pagos[idx] = total
-        self.pagos = new_pagos
-        self.pagos_str = [f"{p:.0f}" for p in new_pagos]
 
     @rx.event
     def yo_pago_todo(self):

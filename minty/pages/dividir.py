@@ -418,7 +418,8 @@ def _pagos_card() -> rx.Component:
                 size="2", color=T.TEXT_MUTED,
             ),
             rx.vstack(
-                rx.text("Pagó la cuenta:", size="1", color=T.TEXT_DIM),
+                rx.text("¿Quién hizo el pago de la cuenta?", size="1",
+                        color=T.TEXT_DIM),
                 rx.flex(
                     rx.foreach(DividirState.pagadores, _pagador_chip),
                     wrap="wrap", gap="6px",
@@ -426,12 +427,13 @@ def _pagos_card() -> rx.Component:
                 rx.cond(
                     DividirState.hay_pagador,
                     rx.text(
-                        "Marcado: " + DividirState.pagador_nombre +
-                        " pagó el total. Vuelve a hacer clic para desmarcar.",
+                        DividirState.pagador_nombre +
+                        " hizo el pago. Es solo etiqueta — abajo pones lo "
+                        "que cada uno aportó.",
                         size="1", color=T.VIOLET,
                     ),
                     rx.text(
-                        "Sin pagador definido — o usa los inputs para repartir.",
+                        "Sin pagador definido (opcional).",
                         size="1", color=T.TEXT_DIM,
                     ),
                 ),
