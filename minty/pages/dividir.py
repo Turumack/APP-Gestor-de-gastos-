@@ -157,7 +157,8 @@ def _item_card(idx_item, item) -> rx.Component:
                     background="rgba(255,255,255,0.04)",
                     border=f"1px solid {T.BORDER}",
                     border_radius=T.RADIUS_SM,
-                    color=T.TEXT, padding="8px 10px",
+                    color=rx.cond(item.monto < 0, T.RED, T.TEXT),
+                    padding="8px 10px",
                     height="36px", width="140px",
                     text_align="right",
                     font_family=T.FONT_MONO,
@@ -203,7 +204,9 @@ def _items_card() -> rx.Component:
             ),
             rx.text(
                 "Agrega cada producto/servicio con su monto. Marca quiénes "
-                "pagan ese ítem y se dividirá en partes iguales entre ellos.",
+                "pagan ese ítem y se dividirá en partes iguales entre ellos. "
+                "Usa montos negativos (o el botón “Descuento”) para "
+                "descuentos, bonos o créditos que resten al total.",
                 size="2", color=T.TEXT_MUTED,
             ),
             rx.cond(
@@ -240,8 +243,10 @@ def _items_card() -> rx.Component:
                     height="40px", width="160px",
                     text_align="right", font_family=T.FONT_MONO,
                 ),
-                primary_button("Agregar ítem", DividirState.add_item,
+                primary_button("Agregar cargo", DividirState.add_item,
                                icon="plus"),
+                ghost_button("Agregar descuento", DividirState.add_descuento,
+                             icon="minus"),
                 spacing="2", align="center", width="100%",
             ),
             spacing="3", align="stretch", width="100%",

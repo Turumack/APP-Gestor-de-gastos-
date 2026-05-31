@@ -214,10 +214,31 @@ class DividirState(rx.State):
     def add_item(self):
         nombre = self.nuevo_item_nombre.strip() or "Ítem"
         monto = float(self.nuevo_item_monto or 0)
-        if monto <= 0:
-            self.msg = "⚠ Indica un monto mayor a 0 para el ítem."
+        if monto == 0:
+            self.msg = "⚠ El monto no puede ser 0 (usa positivo para cargos, negativo para descuentos)."
             return
         # Por defecto incluye a todos los participantes
+        incluidos = list(range(len(self.participantes)))
+        self.items = self.items + [ItemRow(
+            nombre=nombre,
+            monto=monto,
+            incluidos=incluidos,
+            monto_str=f"{monto:.0f}",
+        )]
+        self.nuevo_item_nombre = ""
+        self.nuevo_item_monto = 0.0
+        self.msg = ""
+
+    @rx.event
+    def add_descuento(self):
+        """Atajo: agrega un ítem con monto negativo (descuento/bono)."""
+        nombre = self.nuevo_item_nombre.strip() or "Descuento"
+        monto = float(self.nuevo_item_monto or 0)
+        if monto == 0:
+            self.msg = "⚠ Indica un monto a descontar."
+            return
+        # Forzar negativo
+        monto = -abs(monto)
         incluidos = list(range(len(self.participantes)))
         self.items = self.items + [ItemRow(
             nombre=nombre,
