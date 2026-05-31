@@ -83,6 +83,7 @@ _INDEXES = [
     ("idx_ajuste_fecha",           "ajuste",       "fecha"),
     ("idx_ajuste_caja_id",         "ajuste",       "caja_id"),
     ("idx_splitcuenta_fecha",      "splitcuenta",  "fecha"),
+    ("idx_persona_nombre",         "persona",      "nombre"),
 ]
 
 

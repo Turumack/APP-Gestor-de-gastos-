@@ -6,6 +6,7 @@ from minty.pages import (
     home_page, resumen_page, ingresos_page,
     gastos_page, compras_page, cajas_page, inversiones_page, baul_page,
     presupuestos_page, metas_page, ajustes_page, dividir_page,
+    personas_page,
     configuracion_page, login_page,
 )
 from minty.state.auth import AuthState
@@ -20,6 +21,7 @@ from minty.state.presupuestos import PresupuestosState
 from minty.state.metas import MetasState
 from minty.state.ajustes import AjustesState
 from minty.state.dividir import DividirState
+from minty.state.personas import PersonasState
 from minty.state.config import ConfigState
 
 
@@ -65,6 +67,8 @@ app.add_page(ajustes_page,     route="/ajustes",     title="Ajustes · MINTY",
              on_load=[_GUARD, AjustesState.load])
 app.add_page(dividir_page,     route="/dividir",     title="Dividir cuenta · MINTY",
              on_load=[_GUARD, DividirState.load])
+app.add_page(personas_page,    route="/personas",    title="Personas · MINTY",
+             on_load=[_GUARD, PersonasState.load])
 app.add_page(configuracion_page, route="/configuracion", title="Configuración · MINTY",
              on_load=[_GUARD, ConfigState.load])
 app.add_page(login_page,       route="/login",       title="Iniciar sesión · MINTY")

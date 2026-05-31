@@ -134,6 +134,7 @@ def sidebar() -> rx.Component:
             _nav_item("Ingresos", "trending-up", "/ingresos", route),
             _nav_item("Gastos", "trending-down", "/gastos", route),
             _nav_item("Dividir cuenta", "users", "/dividir", route),
+            _nav_item("Personas", "contact", "/personas", route),
             _nav_item("Listas", "list", "/compras", route),
 
             rx.spacer(height="20px"),

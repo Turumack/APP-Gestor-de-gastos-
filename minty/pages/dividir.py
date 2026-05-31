@@ -45,6 +45,13 @@ def _header_card() -> rx.Component:
 def _chip_participante(p) -> rx.Component:
     es_yo = p.es_yo
     return rx.hstack(
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
+        ),
         rx.button(
             rx.cond(
                 es_yo,
@@ -76,6 +83,37 @@ def _chip_participante(p) -> rx.Component:
     )
 
 
+def _persona_pick_chip(p) -> rx.Component:
+    return rx.button(
+        rx.hstack(
+            rx.box(
+                rx.text(p.emoji, font_size="14px"),
+                width="22px", height="22px",
+                border_radius="50%",
+                background=p.color,
+                display="flex", align_items="center", justify_content="center",
+            ),
+            rx.text(p.nombre, size="2", color=T.TEXT),
+            rx.cond(
+                p.ya_agregada,
+                rx.icon("check", size=12, color=T.GREEN),
+                rx.icon("plus", size=12, color=T.TEXT_MUTED),
+            ),
+            spacing="2", align="center",
+        ),
+        on_click=DividirState.agregar_persona(p.id),
+        disabled=p.ya_agregada,
+        background=rx.cond(p.ya_agregada,
+                           "rgba(74,222,128,0.08)",
+                           "rgba(255,255,255,0.03)"),
+        border=f"1px solid {T.BORDER}",
+        border_radius="999px",
+        padding="6px 10px",
+        cursor=rx.cond(p.ya_agregada, "default", "pointer"),
+        opacity=rx.cond(p.ya_agregada, "0.6", "1"),
+    )
+
+
 def _participantes_card() -> rx.Component:
     return glass_card(
         rx.vstack(
@@ -83,22 +121,45 @@ def _participantes_card() -> rx.Component:
                 rx.icon("users", size=18, color=T.VIOLET),
                 rx.heading("Participantes", size="4",
                            font_family=T.FONT_HEAD, color=T.TEXT),
-                spacing="2", align="center",
+                rx.spacer(),
+                rx.link(
+                    rx.hstack(
+                        rx.icon("contact", size=14),
+                        rx.text("Gestionar personas", size="1"),
+                        spacing="1", align="center",
+                    ),
+                    href="/personas",
+                    color=T.TEXT_MUTED,
+                ),
+                spacing="2", align="center", width="100%",
             ),
             rx.text(
-                "Marca con ● cuál de ellos eres tú. Cada uno verá lo que paga "
-                "según los ítems donde esté incluido.",
+                "Marca con ● cuál de ellos eres tú. Añade personas desde tu "
+                "libreta o escribe un nombre puntual.",
                 size="2", color=T.TEXT_MUTED,
             ),
             rx.flex(
                 rx.foreach(DividirState.por_persona, _chip_participante),
                 wrap="wrap", gap="8px",
             ),
+            rx.cond(
+                DividirState.personas_disponibles.length() > 0,
+                rx.vstack(
+                    rx.text("De tu libreta:", size="1", color=T.TEXT_DIM),
+                    rx.flex(
+                        rx.foreach(DividirState.personas_disponibles,
+                                   _persona_pick_chip),
+                        wrap="wrap", gap="6px",
+                    ),
+                    spacing="1", align="stretch", width="100%",
+                ),
+                rx.fragment(),
+            ),
             rx.hstack(
                 rx.input(
                     value=DividirState.nuevo_participante,
                     on_change=DividirState.set_nuevo_participante,
-                    placeholder="Nombre del nuevo participante…",
+                    placeholder="Nombre puntual (no se guarda en la libreta)…",
                     background="rgba(255,255,255,0.04)",
                     border=f"1px solid {T.BORDER}",
                     border_radius=T.RADIUS_SM,
@@ -259,10 +320,12 @@ def _items_card() -> rx.Component:
 def _result_row(p) -> rx.Component:
     es_yo = p.es_yo
     return rx.hstack(
-        rx.icon(
-            rx.cond(es_yo, "circle-dot", "circle"),
-            size=14,
-            color=rx.cond(es_yo, T.VIOLET, T.TEXT_DIM),
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
         ),
         rx.text(p.nombre, size="3",
                 color=rx.cond(es_yo, T.TEXT, T.TEXT_MUTED),
@@ -274,6 +337,202 @@ def _result_row(p) -> rx.Component:
         spacing="2", align="center", width="100%",
         padding="8px 12px",
         border_bottom=f"1px solid {T.BORDER_SOFT}",
+    )
+
+
+# ── Pagos ───────────────────────────────────────────────────
+def _pago_row(p) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="24px", height="24px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.nombre, size="2", color=T.TEXT, weight="medium",
+                width="120px"),
+        rx.input(
+            value=p.pagado_str,
+            on_change=lambda v: DividirState.set_pago(p.idx, v),
+            placeholder="0",
+            type="number",
+            background="rgba(255,255,255,0.04)",
+            border=f"1px solid {T.BORDER}",
+            border_radius=T.RADIUS_SM,
+            color=T.TEXT, padding="8px 12px",
+            height="36px", flex="1",
+            font_family=T.FONT_MONO,
+            text_align="right",
+        ),
+        spacing="2", align="center", width="100%",
+    )
+
+
+def _pagos_card() -> rx.Component:
+    return glass_card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("hand-coins", size=18, color=T.VIOLET),
+                rx.heading("¿Quién pagó?", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                spacing="2", align="center",
+            ),
+            rx.text(
+                "Indica cuánto pagó cada persona en realidad. Sirve para "
+                "calcular quién le debe a quién.",
+                size="2", color=T.TEXT_MUTED,
+            ),
+            rx.vstack(
+                rx.foreach(DividirState.por_persona, _pago_row),
+                spacing="2", align="stretch", width="100%",
+            ),
+            rx.hstack(
+                primary_button("Yo pagué todo",
+                               DividirState.yo_pago_todo,
+                               icon="user-check"),
+                ghost_button("Limpiar pagos",
+                             DividirState.limpiar_pagos, icon="eraser"),
+                spacing="2", align="center",
+            ),
+            rx.divider(color_scheme="gray"),
+            rx.hstack(
+                rx.text("Pagado:", size="2", color=T.TEXT_MUTED),
+                rx.text(DividirState.total_pagado_fmt, size="2",
+                        color=T.TEXT, font_family=T.FONT_MONO,
+                        weight="bold"),
+                rx.text("/", size="2", color=T.TEXT_DIM),
+                rx.text(DividirState.total_fmt, size="2",
+                        color=T.TEXT_MUTED, font_family=T.FONT_MONO),
+                rx.spacer(),
+                rx.cond(
+                    DividirState.pagos_balanceados,
+                    rx.hstack(
+                        rx.icon("circle-check", size=14, color=T.GREEN),
+                        rx.text("Cuadra", size="2", color=T.GREEN),
+                        spacing="1", align="center",
+                    ),
+                    rx.hstack(
+                        rx.icon("triangle-alert", size=14, color=T.AMBER),
+                        rx.text("Falta " + DividirState.diferencia_pagos_fmt,
+                                size="2", color=T.AMBER,
+                                font_family=T.FONT_MONO),
+                        spacing="1", align="center",
+                    ),
+                ),
+                spacing="2", align="center", width="100%",
+            ),
+            spacing="3", align="stretch", width="100%",
+        ),
+        padding="20px",
+    )
+
+
+# ── Saldos y transferencias ─────────────────────────────────
+def _saldo_row(p) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="24px", height="24px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.nombre, size="2", color=T.TEXT, weight="medium"),
+        rx.spacer(),
+        rx.text(p.balance_fmt, size="2", font_family=T.FONT_MONO,
+                color=rx.match(
+                    p.balance_signo,
+                    ("debe", T.RED),
+                    ("recibe", T.GREEN),
+                    T.TEXT_DIM,
+                )),
+        rx.match(
+            p.balance_signo,
+            ("debe", rx.badge("Debe", color_scheme="red", variant="soft")),
+            ("recibe", rx.badge("Recibe", color_scheme="green",
+                                variant="soft")),
+            rx.badge("Saldado", color_scheme="gray", variant="soft"),
+        ),
+        spacing="2", align="center", width="100%",
+        padding="8px 12px",
+        border_bottom=f"1px solid {T.BORDER_SOFT}",
+    )
+
+
+def _transfer_row(t) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(t.de_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.de_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.de_nombre, size="2", color=T.TEXT),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.text(t.monto_fmt, size="2", color=T.VIOLET,
+                font_family=T.FONT_MONO, weight="bold"),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.box(
+            rx.text(t.a_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.a_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.a_nombre, size="2", color=T.TEXT),
+        spacing="2", align="center",
+        padding="8px 12px",
+        background="rgba(255,255,255,0.03)",
+        border=f"1px solid {T.BORDER_SOFT}",
+        border_radius=T.RADIUS_SM,
+    )
+
+
+def _saldos_card() -> rx.Component:
+    return glass_card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("scale", size=18, color=T.VIOLET),
+                rx.heading("Saldos", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                spacing="2", align="center",
+            ),
+            rx.text(
+                "Diferencia entre lo que debería pagar cada persona y lo "
+                "que realmente pagó.",
+                size="2", color=T.TEXT_MUTED,
+            ),
+            rx.vstack(
+                rx.foreach(DividirState.por_persona, _saldo_row),
+                spacing="0", align="stretch", width="100%",
+            ),
+            rx.divider(color_scheme="gray"),
+            rx.hstack(
+                rx.icon("arrow-right-left", size=16, color=T.VIOLET),
+                rx.heading("Transferencias sugeridas", size="3",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                spacing="2", align="center",
+            ),
+            rx.cond(
+                DividirState.hay_transferencias,
+                rx.vstack(
+                    rx.foreach(DividirState.transferencias, _transfer_row),
+                    spacing="2", align="stretch", width="100%",
+                ),
+                rx.hstack(
+                    rx.icon("circle-check", size=16, color=T.GREEN),
+                    rx.text("Cuentas saldadas — nadie debe nada.",
+                            size="2", color=T.GREEN),
+                    spacing="2", align="center", padding="8px",
+                ),
+            ),
+            spacing="3", align="stretch", width="100%",
+        ),
+        padding="20px",
     )
 
 
@@ -411,6 +670,26 @@ def _hist_row(h) -> rx.Component:
                 rx.text(h.fecha, size="1", color=T.TEXT_DIM,
                         font_family=T.FONT_MONO),
                 rx.cond(
+                    h.n_participantes > 0,
+                    rx.hstack(
+                        rx.icon("users", size=12, color=T.TEXT_DIM),
+                        rx.text(h.n_participantes.to_string(), size="1",
+                                color=T.TEXT_DIM),
+                        spacing="1", align="center",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    h.pagador_nombre != "",
+                    rx.hstack(
+                        rx.icon("hand-coins", size=12, color=T.AMBER),
+                        rx.text("Pagó " + h.pagador_nombre, size="1",
+                                color=T.AMBER),
+                        spacing="1", align="center",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
                     h.tiene_gasto,
                     rx.hstack(
                         rx.icon("check", size=12, color=T.GREEN),
@@ -420,7 +699,7 @@ def _hist_row(h) -> rx.Component:
                     ),
                     rx.fragment(),
                 ),
-                spacing="2", align="center",
+                spacing="2", align="center", wrap="wrap",
             ),
             spacing="0", align="start", flex="1",
         ),
@@ -490,7 +769,9 @@ def dividir_page() -> rx.Component:
             _header_card(),
             _participantes_card(),
             _items_card(),
+            _pagos_card(),
             _result_card(),
+            _saldos_card(),
             _registro_dialog(),
             _hist_card(),
             spacing="4", align="stretch", width="100%",

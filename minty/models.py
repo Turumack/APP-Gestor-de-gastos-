@@ -211,3 +211,19 @@ class SplitCuenta(rx.Model, table=True):
     gasto_id: Optional[int] = sqlmodel.Field(default=None, foreign_key="gasto.id")
     creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
+
+class Persona(rx.Model, table=True):
+    """Persona recurrente para cuentas compartidas.
+
+    Permite mantener una libreta de personas reutilizables al dividir
+    facturas. No tiene relación contable directa con cajas; es solo un
+    catálogo para no escribir el mismo nombre cada vez.
+    """
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
+    nombre: str = ""
+    color: str = "#a78bfa"
+    emoji: str = "👤"
+    notas: str = ""
+    activa: bool = True
+    creado_en: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+
