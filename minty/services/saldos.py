@@ -54,6 +54,18 @@ class PairDebtRow(BaseModel):
     involucra_yo: bool
 
 
+class PersonaBalanceRow(BaseModel):
+    """Saldo neto de UNA persona contra otra (perspectiva de la primera)."""
+    otro_idx: int           # persona_id del otro (-1 = Yo)
+    otro_nombre: str
+    otro_emoji: str
+    otro_color: str
+    otro_es_yo: bool
+    monto: float            # siempre positivo
+    monto_fmt: str
+    signo: str              # "le_debe" (esta persona debe) | "le_deben" (le deben)
+
+
 def _extraer_balances(data: dict) -> list[tuple[int, float, bool]]:
     """Devuelve [(persona_id, balance, es_yo)] por participante.
 
@@ -61,38 +73,51 @@ def _extraer_balances(data: dict) -> list[tuple[int, float, bool]]:
     libreta — se descarta al agregar.
     `es_yo == True` cuando es el participante en `yo_idx` (lo agrupamos
     bajo `YO_PID`).
+
+    Reglas de cálculo:
+    - Lo que cada uno DEBE pagar se reparte por ítems incluidos.
+    - Lo que cada uno APORTÓ son los inputs `pagos[i]`.
+    - Si hay `pagador_idx` válido y los aportes no cuadran con el total,
+      se asume que el pagador cubrió la diferencia (es quien hizo el
+      pago físico — el resto le debe a él).
+    - balance = aportado − debido. Positivo = acreedor; negativo = deudor.
     """
     parts = data.get("participantes") or []
     n = len(parts) if isinstance(parts, list) else 0
     if n == 0:
         return []
     yo_idx = int(data.get("yo_idx", 0))
+    pagador_idx = int(data.get("pagador_idx", -1))
     pids: list[int] = []
     for p in parts:
         if isinstance(p, dict):
             pids.append(int(p.get("persona_id", 0) or 0))
         else:
             pids.append(0)
-    balances = data.get("balances")
-    if isinstance(balances, list) and balances:
-        bals = [float(b or 0) for b in balances]
-        while len(bals) < n:
-            bals.append(0.0)
-    else:
-        # Fallback para facturas viejas: calcular desde pagos + items.
-        pagos = [float(x or 0) for x in (data.get("pagos") or [])]
-        while len(pagos) < n:
-            pagos.append(0.0)
-        deb = [0.0] * n
-        for it in (data.get("items") or []):
-            inc = [int(x) for x in (it.get("incluidos") or [])
-                   if 0 <= int(x) < n]
-            if not inc:
-                continue
-            share = float(it.get("monto", 0) or 0) / len(inc)
-            for i in inc:
-                deb[i] += share
-        bals = [pagos[i] - deb[i] for i in range(n)]
+    # Calcular siempre desde pagos+items para que aplique la regla del
+    # pagador (los `balances` precomputados de facturas viejas se ignoran).
+    pagos = [float(x or 0) for x in (data.get("pagos") or [])]
+    while len(pagos) < n:
+        pagos.append(0.0)
+    deb = [0.0] * n
+    total = 0.0
+    for it in (data.get("items") or []):
+        monto = float(it.get("monto", 0) or 0)
+        total += monto
+        inc = [int(x) for x in (it.get("incluidos") or [])
+               if 0 <= int(x) < n]
+        if not inc:
+            continue
+        share = monto / len(inc)
+        for i in inc:
+            deb[i] += share
+    # Si hay pagador marcado y los aportes no cubren el total, atribuirle
+    # el faltante (también funciona si sobra: lo descontamos).
+    if 0 <= pagador_idx < n:
+        falta = total - sum(pagos)
+        if abs(falta) > 0.5:
+            pagos[pagador_idx] += falta
+    bals = [pagos[i] - deb[i] for i in range(n)]
     out: list[tuple[int, float, bool]] = []
     for i in range(n):
         out.append((pids[i], bals[i], i == yo_idx))
@@ -282,3 +307,41 @@ def compute_pairwise_debts(
     # cada bloque por monto descendente.
     out.sort(key=lambda r: (r.involucra_yo, -r.monto))
     return out
+
+
+def compute_persona_balances(
+    pares: Iterable[PairDebtRow],
+    incluir_yo: bool = True,
+) -> dict[int, list[PersonaBalanceRow]]:
+    """Para cada persona (id), devuelve la lista de balances netos
+    contra cada otra persona, calculados a partir de los pares ya
+    neteados de `compute_pairwise_debts`.
+
+    La clave del dict es el `persona_id` (puede ser `YO_PID` para Yo).
+    Cada fila indica qué le debe esa persona a otra (`signo="le_debe"`)
+    o cuánto le deben (`signo="le_deben"`).
+    """
+    by_persona: dict[int, list[PersonaBalanceRow]] = {}
+    for pr in pares:
+        if not incluir_yo and (pr.de_es_yo or pr.a_es_yo):
+            continue
+        # Para el deudor: él le debe al acreedor
+        by_persona.setdefault(pr.de_idx, []).append(PersonaBalanceRow(
+            otro_idx=pr.a_idx, otro_nombre=pr.a_nombre,
+            otro_emoji=pr.a_emoji, otro_color=pr.a_color,
+            otro_es_yo=pr.a_es_yo,
+            monto=pr.monto, monto_fmt=pr.monto_fmt,
+            signo="le_debe",
+        ))
+        # Para el acreedor: el deudor le debe a él
+        by_persona.setdefault(pr.a_idx, []).append(PersonaBalanceRow(
+            otro_idx=pr.de_idx, otro_nombre=pr.de_nombre,
+            otro_emoji=pr.de_emoji, otro_color=pr.de_color,
+            otro_es_yo=pr.de_es_yo,
+            monto=pr.monto, monto_fmt=pr.monto_fmt,
+            signo="le_deben",
+        ))
+    # Orden por monto descendente dentro de cada persona
+    for pid in by_persona:
+        by_persona[pid].sort(key=lambda r: -r.monto)
+    return by_persona

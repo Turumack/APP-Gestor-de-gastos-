@@ -87,6 +87,42 @@ def _form() -> rx.Component:
     )
 
 
+def _balance_line(b) -> rx.Component:
+    """Una línea dentro de la card mostrando saldo con otra persona."""
+    return rx.hstack(
+        rx.box(
+            rx.text(b.otro_emoji, font_size="12px"),
+            width="20px", height="20px",
+            border_radius="50%",
+            background=b.otro_color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(b.otro_nombre, size="2", color=T.TEXT,
+                weight=rx.cond(b.otro_es_yo, "bold", "regular")),
+        rx.spacer(),
+        rx.match(
+            b.signo,
+            ("le_debe", rx.hstack(
+                rx.text("debe", size="1", color=T.RED),
+                rx.text(b.monto_fmt, size="2", color=T.RED,
+                        font_family=T.FONT_MONO, weight="bold"),
+                spacing="1", align="center",
+            )),
+            ("le_deben", rx.hstack(
+                rx.text("le deben", size="1", color=T.GREEN),
+                rx.text(b.monto_fmt, size="2", color=T.GREEN,
+                        font_family=T.FONT_MONO, weight="bold"),
+                spacing="1", align="center",
+            )),
+            rx.text("saldado", size="1", color=T.TEXT_DIM),
+        ),
+        spacing="2", align="center", width="100%",
+        padding="6px 0",
+        border_bottom=f"1px solid {T.BORDER_SOFT}",
+    )
+
+
 def _persona_card(p) -> rx.Component:
     return rx.box(
         rx.vstack(
@@ -100,8 +136,17 @@ def _persona_card(p) -> rx.Component:
                     justify_content="center",
                 ),
                 rx.vstack(
-                    rx.heading(p.nombre, size="4",
-                               font_family=T.FONT_HEAD, color=T.TEXT),
+                    rx.hstack(
+                        rx.heading(p.nombre, size="4",
+                                   font_family=T.FONT_HEAD, color=T.TEXT),
+                        rx.cond(
+                            p.es_yo,
+                            rx.badge("Tú", color_scheme="violet",
+                                     variant="soft", size="1"),
+                            rx.fragment(),
+                        ),
+                        spacing="2", align="center",
+                    ),
                     rx.cond(
                         p.notas != "",
                         rx.text(p.notas, size="1", color=T.TEXT_MUTED),
@@ -111,35 +156,87 @@ def _persona_card(p) -> rx.Component:
                 ),
                 spacing="3", align="center", width="100%",
             ),
+            # Balance total + acciones
             rx.hstack(
-                rx.cond(
-                    p.activa,
-                    rx.badge("Activa", color_scheme="green", size="1"),
-                    rx.badge("Inactiva", color_scheme="gray", size="1"),
+                rx.match(
+                    p.balance_signo,
+                    ("debe", rx.hstack(
+                        rx.icon("trending-down", size=14, color=T.RED),
+                        rx.text("Debe en total", size="1", color=T.RED),
+                        rx.text(p.balance_total_fmt, size="2", color=T.RED,
+                                font_family=T.FONT_MONO, weight="bold"),
+                        spacing="1", align="center",
+                    )),
+                    ("recibe", rx.hstack(
+                        rx.icon("trending-up", size=14, color=T.GREEN),
+                        rx.text("Le deben", size="1", color=T.GREEN),
+                        rx.text(p.balance_total_fmt, size="2", color=T.GREEN,
+                                font_family=T.FONT_MONO, weight="bold"),
+                        spacing="1", align="center",
+                    )),
+                    rx.hstack(
+                        rx.icon("check", size=14, color=T.TEXT_DIM),
+                        rx.text("Sin saldos pendientes", size="1",
+                                color=T.TEXT_DIM),
+                        spacing="1", align="center",
+                    ),
                 ),
                 rx.spacer(),
-                rx.icon_button(
-                    rx.icon("pencil", size=14),
-                    on_click=PersonasState.editar(p.id),
-                    variant="ghost", color_scheme="violet", size="1",
+                rx.cond(
+                    p.es_yo,
+                    rx.fragment(),
+                    rx.cond(
+                        p.activa,
+                        rx.badge("Activa", color_scheme="green", size="1"),
+                        rx.badge("Inactiva", color_scheme="gray", size="1"),
+                    ),
                 ),
-                rx.icon_button(
-                    rx.icon(rx.cond(p.activa, "eye-off", "eye"), size=14),
-                    on_click=PersonasState.toggle_activa(p.id),
-                    variant="ghost", color_scheme="gray", size="1",
+                spacing="2", align="center", width="100%",
+            ),
+            # Desglose con cada otra persona
+            rx.cond(
+                p.balances.length() > 0,
+                rx.vstack(
+                    rx.divider(color_scheme="gray"),
+                    rx.text("Saldos con otros:", size="1", color=T.TEXT_DIM),
+                    rx.foreach(p.balances, _balance_line),
+                    spacing="1", align="stretch", width="100%",
                 ),
-                rx.icon_button(
-                    rx.icon("trash-2", size=14),
-                    on_click=PersonasState.eliminar(p.id),
-                    variant="ghost", color_scheme="red", size="1",
+                rx.fragment(),
+            ),
+            # Acciones (solo personas reales, no Yo)
+            rx.cond(
+                p.es_yo,
+                rx.fragment(),
+                rx.hstack(
+                    rx.spacer(),
+                    rx.icon_button(
+                        rx.icon("pencil", size=14),
+                        on_click=PersonasState.editar(p.id),
+                        variant="ghost", color_scheme="violet", size="1",
+                    ),
+                    rx.icon_button(
+                        rx.icon(rx.cond(p.activa, "eye-off", "eye"), size=14),
+                        on_click=PersonasState.toggle_activa(p.id),
+                        variant="ghost", color_scheme="gray", size="1",
+                    ),
+                    rx.icon_button(
+                        rx.icon("trash-2", size=14),
+                        on_click=PersonasState.eliminar(p.id),
+                        variant="ghost", color_scheme="red", size="1",
+                    ),
+                    spacing="1", align="center", width="100%",
                 ),
-                spacing="1", align="center", width="100%",
             ),
             spacing="3", align="stretch", width="100%",
         ),
         padding="16px",
-        background="rgba(255,255,255,0.03)",
-        border=f"1px solid {T.BORDER_SOFT}",
+        background=rx.cond(p.es_yo,
+                           "rgba(167,139,250,0.06)",
+                           "rgba(255,255,255,0.03)"),
+        border=rx.cond(p.es_yo,
+                       f"1px solid {T.VIOLET}",
+                       f"1px solid {T.BORDER_SOFT}"),
         border_radius=T.RADIUS,
         width="100%",
     )

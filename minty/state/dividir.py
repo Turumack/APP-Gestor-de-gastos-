@@ -164,10 +164,19 @@ class DividirState(rx.State):
             share = float(item.monto or 0) / len(inc_validos)
             for i in inc_validos:
                 acc[int(i)] += share
+        # Pagos efectivos: si hay pagador marcado, le atribuimos la
+        # diferencia faltante (el resto le debe a él).
+        pagos_efectivos = [float(self.pagos[i]) if i < len(self.pagos) else 0.0
+                           for i in range(n_part)]
+        if 0 <= self.pagador_idx < n_part:
+            total_factura = sum(acc)
+            falta = total_factura - sum(pagos_efectivos)
+            if abs(falta) > 0.5:
+                pagos_efectivos[self.pagador_idx] += falta
         out: list[ParticipanteRow] = []
         for i, nombre in enumerate(self.participantes):
             paga = acc[i]
-            pagado = float(self.pagos[i]) if i < len(self.pagos) else 0.0
+            pagado = pagos_efectivos[i]
             pagado_str = (self.pagos_str[i]
                           if i < len(self.pagos_str) else "0")
             balance = pagado - paga
