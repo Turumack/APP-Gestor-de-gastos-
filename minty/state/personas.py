@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from minty.models import Persona, SplitCuenta
 from minty.state._autosetters import auto_setters
 from minty.services.saldos import (
-    compute_saldos_globales, SaldoGlobalRow, TransferGlobalRow,
+    compute_saldos_globales, compute_pairwise_debts,
+    SaldoGlobalRow, TransferGlobalRow, PairDebtRow,
 )
 
 
@@ -36,6 +37,7 @@ class PersonasState(rx.State):
     # Saldos acumulados entre todas las facturas
     saldos_globales: list[SaldoGlobalRow] = []
     transferencias_globales: list[TransferGlobalRow] = []
+    deudas_pares: list[PairDebtRow] = []
 
     # Form
     form_open: bool = False
@@ -68,6 +70,7 @@ class PersonasState(rx.State):
         saldos, transfers = compute_saldos_globales(splits, personas)
         self.saldos_globales = saldos
         self.transferencias_globales = transfers
+        self.deudas_pares = compute_pairwise_debts(splits, personas)
 
     @rx.event
     def toggle_form(self):

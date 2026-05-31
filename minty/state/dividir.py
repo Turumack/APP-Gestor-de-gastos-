@@ -16,9 +16,10 @@ from pydantic import BaseModel
 from minty.models import SplitCuenta, Caja, Gasto, Persona
 from minty.state._autosetters import auto_setters
 from minty.services.saldos import (
-    compute_saldos_globales,
+    compute_saldos_globales, compute_pairwise_debts,
     SaldoGlobalRow as _SrvSaldo,
     TransferGlobalRow as _SrvTransfer,
+    PairDebtRow as _SrvPair,
 )
 
 
@@ -137,6 +138,7 @@ class DividirState(rx.State):
     # Saldos acumulados entre todas las facturas (incluye "Yo").
     saldos_globales: list[_SrvSaldo] = []
     transferencias_globales: list[_SrvTransfer] = []
+    deudas_pares: list[_SrvPair] = []
     msg: str = ""
 
     # ── Computed ─────────────────────────────────────────────
@@ -394,6 +396,7 @@ class DividirState(rx.State):
         saldos, transfers = compute_saldos_globales(splits_all, personas)
         self.saldos_globales = saldos
         self.transferencias_globales = transfers
+        self.deudas_pares = compute_pairwise_debts(splits_all, personas)
 
     # ── Participantes ───────────────────────────────────────
     def _append_participante(self, nombre: str, persona_id: int = 0,

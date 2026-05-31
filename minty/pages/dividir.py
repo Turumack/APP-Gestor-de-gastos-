@@ -862,6 +862,43 @@ def _saldo_global_transfer(t) -> rx.Component:
     )
 
 
+def _pair_global_row(p) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(p.de_emoji, font_size="14px"),
+            width="24px", height="24px",
+            border_radius="50%",
+            background=p.de_color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.de_nombre, size="2", color=T.TEXT,
+                weight=rx.cond(p.de_es_yo, "bold", "regular")),
+        rx.text("le debe a", size="1", color=T.TEXT_DIM),
+        rx.box(
+            rx.text(p.a_emoji, font_size="14px"),
+            width="24px", height="24px",
+            border_radius="50%",
+            background=p.a_color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.a_nombre, size="2", color=T.TEXT,
+                weight=rx.cond(p.a_es_yo, "bold", "regular")),
+        rx.spacer(),
+        rx.text(p.monto_fmt, size="3",
+                color=rx.cond(p.involucra_yo, T.VIOLET, T.TEXT),
+                font_family=T.FONT_MONO, weight="bold"),
+        spacing="2", align="center", width="100%",
+        padding="10px 12px",
+        background=rx.cond(p.involucra_yo,
+                           "rgba(167,139,250,0.06)",
+                           "rgba(255,255,255,0.02)"),
+        border=f"1px solid {T.BORDER_SOFT}",
+        border_radius=T.RADIUS_SM,
+    )
+
+
 def _saldos_globales_card() -> rx.Component:
     return glass_card(
         rx.vstack(
@@ -890,6 +927,25 @@ def _saldos_globales_card() -> rx.Component:
                     ),
                     spacing="2", align="center", padding="20px",
                 ),
+            ),
+            rx.cond(
+                DividirState.deudas_pares.length() > 0,
+                rx.vstack(
+                    rx.divider(color_scheme="gray"),
+                    rx.hstack(
+                        rx.icon("users", size=16, color=T.VIOLET),
+                        rx.heading("Quién le debe a quién", size="3",
+                                   font_family=T.FONT_HEAD, color=T.TEXT),
+                        spacing="2", align="center",
+                    ),
+                    rx.text(
+                        "Deuda neta entre cada par (todas las facturas).",
+                        size="1", color=T.TEXT_DIM,
+                    ),
+                    rx.foreach(DividirState.deudas_pares, _pair_global_row),
+                    spacing="2", align="stretch", width="100%",
+                ),
+                rx.fragment(),
             ),
             rx.cond(
                 DividirState.transferencias_globales.length() > 0,
