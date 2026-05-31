@@ -341,6 +341,39 @@ def _result_row(p) -> rx.Component:
 
 
 # ── Pagos ───────────────────────────────────────────────────
+def _pagador_chip(p) -> rx.Component:
+    return rx.button(
+        rx.hstack(
+            rx.box(
+                rx.text(p.emoji, font_size="14px"),
+                width="22px", height="22px",
+                border_radius="50%",
+                background=p.color,
+                display="flex", align_items="center",
+                justify_content="center",
+            ),
+            rx.text(p.nombre, size="2",
+                    color=rx.cond(p.seleccionado, "white", T.TEXT)),
+            rx.cond(
+                p.seleccionado,
+                rx.icon("check", size=12, color="white"),
+                rx.fragment(),
+            ),
+            spacing="2", align="center",
+        ),
+        on_click=DividirState.set_pagador(p.idx),
+        background=rx.cond(p.seleccionado,
+                           T.GRADIENT_BRAND,
+                           "rgba(255,255,255,0.03)"),
+        border=rx.cond(p.seleccionado,
+                       f"1px solid {T.VIOLET}",
+                       f"1px solid {T.BORDER}"),
+        border_radius="999px",
+        padding="6px 12px",
+        cursor="pointer",
+    )
+
+
 def _pago_row(p) -> rx.Component:
     return rx.hstack(
         rx.box(
@@ -384,6 +417,27 @@ def _pagos_card() -> rx.Component:
                 "calcular quién le debe a quién.",
                 size="2", color=T.TEXT_MUTED,
             ),
+            rx.vstack(
+                rx.text("Pagó la cuenta:", size="1", color=T.TEXT_DIM),
+                rx.flex(
+                    rx.foreach(DividirState.pagadores, _pagador_chip),
+                    wrap="wrap", gap="6px",
+                ),
+                rx.cond(
+                    DividirState.hay_pagador,
+                    rx.text(
+                        "Marcado: " + DividirState.pagador_nombre +
+                        " pagó el total. Vuelve a hacer clic para desmarcar.",
+                        size="1", color=T.VIOLET,
+                    ),
+                    rx.text(
+                        "Sin pagador definido — o usa los inputs para repartir.",
+                        size="1", color=T.TEXT_DIM,
+                    ),
+                ),
+                spacing="1", align="stretch", width="100%",
+            ),
+            rx.divider(color_scheme="gray"),
             rx.vstack(
                 rx.foreach(DividirState.por_persona, _pago_row),
                 spacing="2", align="stretch", width="100%",
@@ -734,6 +788,125 @@ def _hist_row(h) -> rx.Component:
     )
 
 
+# ── Saldos globales (cruce entre todas las facturas) ────────
+def _saldo_global_row(p) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(p.emoji, font_size="14px"),
+            width="26px", height="26px",
+            border_radius="50%",
+            background=p.color,
+            display="flex", align_items="center", justify_content="center",
+            flex_shrink="0",
+        ),
+        rx.text(p.nombre, size="2", color=T.TEXT, weight="medium"),
+        rx.spacer(),
+        rx.text(p.balance_fmt, size="2", font_family=T.FONT_MONO,
+                weight="bold",
+                color=rx.match(
+                    p.balance_signo,
+                    ("debe", T.RED),
+                    ("recibe", T.GREEN),
+                    T.TEXT_DIM,
+                )),
+        rx.match(
+            p.balance_signo,
+            ("debe", rx.badge("Te debe", color_scheme="red", variant="soft")),
+            ("recibe", rx.badge("Le debes", color_scheme="green",
+                                variant="soft")),
+            rx.badge("Saldado", color_scheme="gray", variant="soft"),
+        ),
+        spacing="2", align="center", width="100%",
+        padding="10px 12px",
+        border_bottom=f"1px solid {T.BORDER_SOFT}",
+    )
+
+
+def _saldo_global_transfer(t) -> rx.Component:
+    return rx.hstack(
+        rx.box(
+            rx.text(t.de_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.de_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.de_nombre, size="2", color=T.TEXT),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.text(t.monto_fmt, size="2", color=T.VIOLET,
+                font_family=T.FONT_MONO, weight="bold"),
+        rx.icon("arrow-right", size=14, color=T.TEXT_DIM),
+        rx.box(
+            rx.text(t.a_emoji, font_size="14px"),
+            width="22px", height="22px",
+            border_radius="50%",
+            background=t.a_color,
+            display="flex", align_items="center", justify_content="center",
+        ),
+        rx.text(t.a_nombre, size="2", color=T.TEXT),
+        spacing="2", align="center",
+        padding="8px 12px",
+        background="rgba(255,255,255,0.03)",
+        border=f"1px solid {T.BORDER_SOFT}",
+        border_radius=T.RADIUS_SM,
+    )
+
+
+def _saldos_globales_card() -> rx.Component:
+    return glass_card(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("scale", size=18, color=T.VIOLET),
+                rx.heading("Saldos acumulados", size="4",
+                           font_family=T.FONT_HEAD, color=T.TEXT),
+                spacing="2", align="center",
+            ),
+            rx.text(
+                "Cruce de TODAS las facturas guardadas con personas de tu "
+                "libreta. Positivo = tú pagaste de más (te deben).",
+                size="2", color=T.TEXT_MUTED,
+            ),
+            rx.cond(
+                DividirState.saldos_globales.length() > 0,
+                rx.vstack(
+                    rx.foreach(DividirState.saldos_globales, _saldo_global_row),
+                    spacing="0", align="stretch", width="100%",
+                ),
+                rx.vstack(
+                    rx.icon("inbox", size=24, color=T.TEXT_DIM),
+                    rx.text(
+                        "Aún no hay facturas guardadas con personas de tu libreta.",
+                        size="2", color=T.TEXT_MUTED,
+                    ),
+                    spacing="2", align="center", padding="20px",
+                ),
+            ),
+            rx.cond(
+                DividirState.transferencias_globales.length() > 0,
+                rx.vstack(
+                    rx.divider(color_scheme="gray"),
+                    rx.hstack(
+                        rx.icon("arrow-right-left", size=16, color=T.VIOLET),
+                        rx.heading("Liquidación sugerida", size="3",
+                                   font_family=T.FONT_HEAD, color=T.TEXT),
+                        spacing="2", align="center",
+                    ),
+                    rx.text(
+                        "Mínimo número de transferencias para saldar todo.",
+                        size="1", color=T.TEXT_DIM,
+                    ),
+                    rx.foreach(DividirState.transferencias_globales,
+                               _saldo_global_transfer),
+                    spacing="2", align="stretch", width="100%",
+                ),
+                rx.fragment(),
+            ),
+            spacing="3", align="stretch", width="100%",
+        ),
+        padding="20px",
+    )
+
+
 def _hist_card() -> rx.Component:
     return glass_card(
         rx.vstack(
@@ -773,6 +946,7 @@ def dividir_page() -> rx.Component:
             _result_card(),
             _saldos_card(),
             _registro_dialog(),
+            _saldos_globales_card(),
             _hist_card(),
             spacing="4", align="stretch", width="100%",
         ),

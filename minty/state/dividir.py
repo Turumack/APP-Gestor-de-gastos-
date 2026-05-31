@@ -65,6 +65,24 @@ class PersonaPick(BaseModel):
     ya_agregada: bool
 
 
+class PagadorPick(BaseModel):
+    idx: int
+    nombre: str
+    emoji: str
+    color: str
+    seleccionado: bool
+
+
+class SaldoGlobalRow(BaseModel):
+    persona_id: int
+    nombre: str
+    emoji: str
+    color: str
+    balance: float
+    balance_fmt: str
+    balance_signo: str   # "debe" | "recibe" | "ok"
+
+
 class ItemRow(BaseModel):
     nombre: str = ""
     monto: float = 0.0
@@ -90,6 +108,8 @@ class DividirState(rx.State):
     # Cuánto pagó cada participante (paralelo a participantes).
     pagos: list[float] = [0.0]
     pagos_str: list[str] = ["0"]
+    # Pagador único explícito. -1 = sin marcar / multi-pagador.
+    pagador_idx: int = -1
 
     # Items: cada uno con nombre, monto e incluidos
     items: list[ItemRow] = []
@@ -115,6 +135,9 @@ class DividirState(rx.State):
     last_saved_id: Optional[int] = None
     last_gasto_id: Optional[int] = None
     historial: list[SplitHistRow] = []
+    # Saldos acumulados entre todas las facturas (por persona guardada).
+    saldos_globales: list[SaldoGlobalRow] = []
+    transferencias_globales: list[TransferRow] = []
     msg: str = ""
 
     # ── Computed ─────────────────────────────────────────────
@@ -232,6 +255,30 @@ class DividirState(rx.State):
         return len(self.transferencias) > 0
 
     @rx.var
+    def pagadores(self) -> list[PagadorPick]:
+        out: list[PagadorPick] = []
+        for i, nombre in enumerate(self.participantes):
+            color = (self.participante_colors[i]
+                     if i < len(self.participante_colors) else "#a78bfa")
+            emoji = (self.participante_emojis[i]
+                     if i < len(self.participante_emojis) else "\U0001F464")
+            out.append(PagadorPick(
+                idx=i, nombre=nombre, emoji=emoji, color=color,
+                seleccionado=(i == self.pagador_idx),
+            ))
+        return out
+
+    @rx.var
+    def pagador_nombre(self) -> str:
+        if 0 <= self.pagador_idx < len(self.participantes):
+            return self.participantes[self.pagador_idx]
+        return ""
+
+    @rx.var
+    def hay_pagador(self) -> bool:
+        return 0 <= self.pagador_idx < len(self.participantes)
+
+    @rx.var
     def mi_parte(self) -> float:
         n_part = len(self.participantes)
         if not (0 <= self.yo_idx < n_part):
@@ -263,11 +310,14 @@ class DividirState(rx.State):
                     Caja.activa == True  # noqa: E712
                 ).order_by(Caja.orden, Caja.id)
             ).all()
-            splits = s.exec(
+            splits_hist = s.exec(
                 sqlmodel.select(SplitCuenta)
                 .order_by(sqlmodel.desc(SplitCuenta.fecha),
                           sqlmodel.desc(SplitCuenta.id))
                 .limit(30)
+            ).all()
+            splits_all = s.exec(
+                sqlmodel.select(SplitCuenta)
             ).all()
             personas = s.exec(
                 sqlmodel.select(Persona).where(
@@ -294,30 +344,75 @@ class DividirState(rx.State):
             for p in personas
         ]
 
-        nombres_personas = {(p.id or 0): (p.nombre or "") for p in personas}
+        info_personas = {
+            (p.id or 0): {
+                "nombre": p.nombre or "",
+                "color": p.color or "#a78bfa",
+                "emoji": p.emoji or "\U0001F464",
+            }
+            for p in personas
+        }
+
+        # Helper para extraer balance + persona_id por participante de un payload.
+        def _extraer_balances(data: dict) -> list[tuple[int, float]]:
+            parts = data.get("participantes") or []
+            n = len(parts) if isinstance(parts, list) else 0
+            if n == 0:
+                return []
+            pids: list[int] = []
+            for p in parts:
+                if isinstance(p, dict):
+                    pids.append(int(p.get("persona_id", 0) or 0))
+                else:
+                    pids.append(0)
+            balances = data.get("balances")
+            if isinstance(balances, list) and balances:
+                bals = [float(b or 0) for b in balances]
+                while len(bals) < n:
+                    bals.append(0.0)
+            else:
+                # Fallback: calcular desde pagos + items.
+                pagos = [float(x or 0) for x in (data.get("pagos") or [])]
+                while len(pagos) < n:
+                    pagos.append(0.0)
+                deb = [0.0] * n
+                for it in (data.get("items") or []):
+                    inc = [int(x) for x in (it.get("incluidos") or [])
+                           if 0 <= int(x) < n]
+                    if not inc:
+                        continue
+                    share = float(it.get("monto", 0) or 0) / len(inc)
+                    for i in inc:
+                        deb[i] += share
+                bals = [pagos[i] - deb[i] for i in range(n)]
+            return list(zip(pids, bals))
+
+        # Historial reciente
         hist: list[SplitHistRow] = []
-        for sp in splits:
+        for sp in splits_hist:
             try:
                 data = json.loads(sp.payload or "{}")
             except json.JSONDecodeError:
                 data = {}
             parts = data.get("participantes") or []
             n_part = len(parts) if isinstance(parts, list) else 0
-            pagos = data.get("pagos") or []
-            pag_ids = data.get("persona_ids") or []
             pagador = ""
-            if isinstance(pagos, list) and pagos:
+            pid_pagador = int(data.get("pagador_idx", -1))
+            pagos = data.get("pagos") or []
+            idx_pag = -1
+            if 0 <= pid_pagador < n_part:
+                idx_pag = pid_pagador
+            elif isinstance(pagos, list) and pagos:
                 idx_max = max(range(len(pagos)),
                               key=lambda i: float(pagos[i] or 0))
                 if float(pagos[idx_max] or 0) > 0:
-                    if isinstance(parts, list) and idx_max < len(parts):
-                        if isinstance(parts[idx_max], dict):
-                            pagador = parts[idx_max].get("nombre", "")
-                        else:
-                            pagador = str(parts[idx_max])
-                    if not pagador and idx_max < len(pag_ids):
-                        pagador = nombres_personas.get(
-                            int(pag_ids[idx_max] or 0), "")
+                    idx_pag = idx_max
+            if 0 <= idx_pag < n_part:
+                p_obj = parts[idx_pag]
+                if isinstance(p_obj, dict):
+                    pagador = p_obj.get("nombre", "")
+                else:
+                    pagador = str(p_obj)
             hist.append(SplitHistRow(
                 id=sp.id or 0,
                 fecha=sp.fecha.isoformat(),
@@ -329,6 +424,68 @@ class DividirState(rx.State):
                 n_participantes=n_part,
             ))
         self.historial = hist
+
+        # Saldos globales: agregar balances de TODAS las facturas por persona_id
+        agg: dict[int, float] = {}
+        for sp in splits_all:
+            try:
+                data = json.loads(sp.payload or "{}")
+            except json.JSONDecodeError:
+                continue
+            for pid, bal in _extraer_balances(data):
+                if pid <= 0:
+                    continue
+                agg[pid] = agg.get(pid, 0.0) + bal
+
+        saldos: list[SaldoGlobalRow] = []
+        for pid, bal in agg.items():
+            info = info_personas.get(pid)
+            if not info:
+                continue
+            if abs(bal) < 0.5:
+                signo = "ok"
+            elif bal > 0:
+                signo = "recibe"
+            else:
+                signo = "debe"
+            sign_str = "" if bal >= 0 else "-"
+            saldos.append(SaldoGlobalRow(
+                persona_id=pid, nombre=info["nombre"],
+                color=info["color"], emoji=info["emoji"],
+                balance=bal,
+                balance_fmt=f"{sign_str}${abs(bal):,.0f}",
+                balance_signo=signo,
+            ))
+        # Orden: deudores primero, luego saldados, luego acreedores
+        order_signo = {"debe": 0, "ok": 1, "recibe": 2}
+        saldos.sort(key=lambda r: (order_signo[r.balance_signo], -abs(r.balance)))
+        self.saldos_globales = saldos
+
+        # Transferencias mínimas globales (greedy)
+        transfers: list[TransferRow] = []
+        if saldos:
+            bal_arr = [r.balance for r in saldos]
+            n = len(saldos)
+            for _ in range(n * n):
+                i_deb = min(range(n), key=lambda i: bal_arr[i])
+                i_cre = max(range(n), key=lambda i: bal_arr[i])
+                if bal_arr[i_deb] >= -0.5 or bal_arr[i_cre] <= 0.5:
+                    break
+                monto = min(-bal_arr[i_deb], bal_arr[i_cre])
+                if monto < 0.5:
+                    break
+                d = saldos[i_deb]
+                c = saldos[i_cre]
+                transfers.append(TransferRow(
+                    de_idx=d.persona_id, de_nombre=d.nombre,
+                    de_emoji=d.emoji, de_color=d.color,
+                    a_idx=c.persona_id, a_nombre=c.nombre,
+                    a_emoji=c.emoji, a_color=c.color,
+                    monto=monto, monto_fmt=f"${monto:,.0f}",
+                ))
+                bal_arr[i_deb] += monto
+                bal_arr[i_cre] -= monto
+        self.transferencias_globales = transfers
 
     # ── Participantes ───────────────────────────────────────
     def _append_participante(self, nombre: str, persona_id: int = 0,
@@ -446,13 +603,41 @@ class DividirState(rx.State):
         new_str[idx] = val if val else "0"
         self.pagos = new_pagos
         self.pagos_str = new_str
+        # Si edita manualmente los montos, deja de ser un pago único.
+        if self.pagador_idx >= 0:
+            n_no_cero = sum(1 for p in new_pagos if abs(p) > 0.01)
+            if n_no_cero != 1 or (
+                0 <= self.pagador_idx < len(new_pagos)
+                and abs(new_pagos[self.pagador_idx] - float(self.total)) > 0.5
+            ):
+                self.pagador_idx = -1
+
+    @rx.event
+    def set_pagador(self, idx: int):
+        """Marca un único pagador y le asigna el total de la factura."""
+        if not (0 <= idx < len(self.participantes)):
+            return
+        # Toggle: clic en el mismo pagador lo desmarca.
+        if self.pagador_idx == idx:
+            self.pagador_idx = -1
+            return
+        self.pagador_idx = idx
+        total = float(self.total)
+        new_pagos = [0.0 for _ in self.pagos]
+        if 0 <= idx < len(new_pagos):
+            new_pagos[idx] = total
+        self.pagos = new_pagos
+        self.pagos_str = [f"{p:.0f}" for p in new_pagos]
 
     @rx.event
     def yo_pago_todo(self):
         if not (0 <= self.yo_idx < len(self.pagos)):
             return
+        idx = self.yo_idx
+        self.pagador_idx = idx
+        total = float(self.total)
         new_pagos = [0.0 for _ in self.pagos]
-        new_pagos[self.yo_idx] = float(self.total)
+        new_pagos[idx] = total
         self.pagos = new_pagos
         self.pagos_str = [f"{p:.0f}" for p in new_pagos]
 
@@ -460,6 +645,7 @@ class DividirState(rx.State):
     def limpiar_pagos(self):
         self.pagos = [0.0 for _ in self.pagos]
         self.pagos_str = ["0" for _ in self.pagos]
+        self.pagador_idx = -1
 
     @rx.event
     def set_yo(self, idx: int):
@@ -554,6 +740,7 @@ class DividirState(rx.State):
         self.notas = ""
         self.participantes = ["Yo"]
         self.yo_idx = 0
+        self.pagador_idx = -1
         self.participante_persona_ids = [0]
         self.participante_colors = ["#a78bfa"]
         self.participante_emojis = ["\U0001F464"]
@@ -578,6 +765,9 @@ class DividirState(rx.State):
 
     # ── Persistencia ────────────────────────────────────────
     def _payload(self) -> str:
+        # Cálculo de balances por participante para acumular en saldos globales
+        rows = self.por_persona
+        balances = [float(r.balance) for r in rows]
         return json.dumps({
             "participantes": [
                 {"nombre": n,
@@ -590,7 +780,9 @@ class DividirState(rx.State):
                 for i, n in enumerate(self.participantes)
             ],
             "yo_idx": int(self.yo_idx),
+            "pagador_idx": int(self.pagador_idx),
             "pagos": [float(p or 0) for p in self.pagos],
+            "balances": balances,
             "items": [
                 {"nombre": str(i.nombre or ""),
                  "monto": float(i.monto or 0),
@@ -680,6 +872,7 @@ class DividirState(rx.State):
             self.participante_colors = colors
             self.participante_emojis = emojis
             self.yo_idx = int(data.get("yo_idx", 0))
+            self.pagador_idx = int(data.get("pagador_idx", -1))
             raw_pagos = data.get("pagos") or [0.0] * len(nombres)
             pagos_f = [float(x or 0) for x in raw_pagos]
             # Asegurar misma longitud que participantes
